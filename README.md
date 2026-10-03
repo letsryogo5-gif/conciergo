@@ -16,6 +16,7 @@ travel-planner-prototype/
 │   │   ├── models.py           # API のデータ型
 │   │   ├── sample_data.py      # スポット・画像・動画・座標・地域情報
 │   │   ├── event_sample_data.py # 年中行事の開催月・リンク先スポット
+│   │   ├── memory_sample_data.py # 旅行履歴・写真位置・撮影日時
 │   │   └── route_sample_data.py # サンプルルート計算の仮定
 │   ├── tests/
 │   └── requirements.txt
@@ -25,6 +26,7 @@ travel-planner-prototype/
 │   │   │   ├── Icon.tsx
 │   │   │   ├── EventCalendar.tsx            # 月別の年中行事タイムライン
 │   │   │   ├── HeritageFeatures.tsx         # 世界遺産の特集カード
+│   │   │   ├── MemoryJournal.tsx            # 旅行履歴・写真マッピング
 │   │   │   ├── RegionalMap.tsx              # エリア別の保存数と絞り込み
 │   │   │   ├── RegionalRecommendations.tsx  # エリア蓄積時のルート提案
 │   │   │   ├── RoutePlanner.tsx             # 日別のルート提案とタイムライン
@@ -79,11 +81,14 @@ npm run dev
 - 「旅行プラン」から、マイマップの保存スポットを使った日別タイムラインを作れます。近隣スポットを同じ日にまとめ、各日の訪問順を近い順に提案します。保存スポットを変更すると、提案済みのプランは破棄されます。
 - フィードに地域の豆知識トーストと世界遺産の特集カード、月別「季節の行事」カレンダーを追加しました。イベントの「行きたい」は、関連スポットをマイマップに保存します。
 - イベントから旅行プランを作ると、開催時期を表示し、イベント関連スポットの近くにあるサンプルスポット（世界遺産・豆知識）をルート候補に加えます。
+- 「思い出」ではサンプル旅行の時系列ルートを写真とともに振り返れます。旅行したスポットを「行った」として、ウィッシュリストとは別にブラウザーへ保存できます。
+- 写真ピンの位置・撮影時刻は `GET /api/memories` のサンプルEXIF風データです。端末写真のアップロード、カメラロール参照、実際のEXIF解析は実装していません。
 
 ## サンプルモードと外部サービス
 
 - `/api/spots` と `/api/spots/{spot_id}` は `backend/app/sample_data.py` の固定データを返します。サンプルデータ取得は `backend/app/services/discovery.py` にまとめてあり、API クライアントの配置先 `backend/app/integrations/` と分離しています。
 - スポットの `local_trivia`、`is_world_heritage`、`heritage_name` は `backend/app/sample_data.py` のデモデータです。月別のイベントは `backend/app/event_sample_data.py` に分け、各イベントを保存可能なスポット ID に結び付けています。
+- `GET /api/memories` は `backend/app/memory_sample_data.py` の旅行履歴、経路座標、写真URL、撮影時刻、緯度経度を返します。写真は試作用モックで、アップロードやEXIF解析は行いません。訪問済みIDは `yorimichi-visited` として `localStorage` に保持され、行きたいID (`yorimichi-wishlist`) とは独立しています。
 - `POST /api/routes` は `event_id` を受け取ると開催目安を提案に加え、イベント地点から直線距離140km以内の世界遺産・豆知識スポットを追加候補にします。サンプルデータによる候補抽出であり、開催日の営業状況や実際の交通経路、旅行の実行可能性は検証しません。
 - 行事の開催時期、見頃、説明・画像と豆知識は UI 動作確認用のモックです。開催の有無や日程は年ごとに異なります。実際に訪問する前に主催者等の公式情報を確認してください。
 - フロントエンドのエリア対応と自動提案しきい値は `frontend/src/regions.ts` に定義しています。3件のしきい値は UI のスマート提案用で、バックエンドはリクエストされたスポットだけから独立して日別プランを計算します。サンプルには関西エリアのスポットを3件含めているため、提案を実際に試せます。
@@ -101,6 +106,7 @@ npm run dev
 - `GET /api/spots`: スポットのサンプルデータ
 - `GET /api/spots/{spot_id}`: ID を指定したスポット。存在しない ID は 404
 - `GET /api/events`: 開催月・スポット ID を含む行事サンプルデータ
+- `GET /api/memories`: 旅行履歴、ルート座標、写真の撮影時刻・位置情報を含むサンプルデータ
 - `POST /api/routes`: `{"spot_ids": ["ine", "fuji-shibazakura"]}` または `{"spot_ids": ["kyoto-kamogawa"], "event_id": "gion-matsuri"}` を受け取り、日別タイムラインを返します。イベント指定時は近隣スポットも候補に加えます。空の ID リストや重複 ID は 422、不明 ID / イベントは 404 です。
 
 バックエンドのテスト:

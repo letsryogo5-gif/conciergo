@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { AppStatus, LocalEvent, RoutePlan, Spot } from "./types";
+import type { AppStatus, LocalEvent, RoutePlan, Spot, TravelMemory } from "./types";
 import { Icon } from "./components/Icon";
 import { RoutePlanner } from "./components/RoutePlanner";
 import { RegionalMap } from "./components/RegionalMap";
@@ -7,13 +7,15 @@ import { RegionalRecommendations } from "./components/RegionalRecommendations";
 import { TriviaToast } from "./components/TriviaToast";
 import { EventCalendar } from "./components/EventCalendar";
 import { HeritageFeatures } from "./components/HeritageFeatures";
+import { MemoryJournal } from "./components/MemoryJournal";
 import type { RegionalRecommendation } from "./components/RegionalRecommendations";
 import { getRegionalSpotGroups, REGION_PIN_THRESHOLD } from "./regions";
 
-type View = "feed" | "map" | "route" | "events";
+type View = "feed" | "map" | "route" | "events" | "memories";
 
 const categories = ["すべて", "秘境", "季節の絶景", "海辺のまち", "まち歩き", "野生のいきもの"];
 const favoritesStorageKey = "yorimichi-wishlist";
+const visitedStorageKey = "yorimichi-visited";
 
 function readSavedSpotIds(): string[] {
   const storedValue = window.localStorage.getItem(favoritesStorageKey);
@@ -26,10 +28,23 @@ function readSavedSpotIds(): string[] {
   return parsedValue;
 }
 
+function readVisitedSpotIds(): string[] {
+  const storedValue = window.localStorage.getItem(visitedStorageKey);
+  if (storedValue === null) return [];
+
+  const parsedValue: unknown = JSON.parse(storedValue);
+  if (!Array.isArray(parsedValue) || !parsedValue.every((value) => typeof value === "string")) {
+    throw new Error("「行った」スポットのデータ形式が正しくありません。ブラウザーの保存データを確認してください。");
+  }
+  return parsedValue;
+}
+
 function App() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [events, setEvents] = useState<LocalEvent[]>([]);
+  const [memories, setMemories] = useState<TravelMemory[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [visitedIds, setVisitedIds] = useState<string[]>([]);
   const [status, setStatus] = useState<AppStatus | null>(null);
   const [routePlan, setRoutePlan] = useState<RoutePlan | null>(null);
   const [routeSpotIds, setRouteSpotIds] = useState<string[] | null>(null);
@@ -48,27 +63,31 @@ function App() {
   useEffect(() => {
     async function loadSampleData() {
       try {
-        const [spotsResponse, statusResponse, eventsResponse] = await Promise.all([
+        const [spotsResponse, statusResponse, eventsResponse, memoriesResponse] = await Promise.all([
           fetch("/api/spots"),
           fetch("/api/status"),
           fetch("/api/events"),
+          fetch("/api/memories"),
         ]);
-        if (!spotsResponse.ok || !statusResponse.ok || !eventsResponse.ok) {
+        if (!spotsResponse.ok || !statusResponse.ok || !eventsResponse.ok || !memoriesResponse.ok) {
           throw new Error("サンプルデータを読み込めませんでした。バックエンドが起動しているか確認してください。");
         }
 
-        const [spotData, statusData, eventData] = await Promise.all([
+        const [spotData, statusData, eventData, memoryData] = await Promise.all([
           spotsResponse.json() as Promise<Spot[]>,
           statusResponse.json() as Promise<AppStatus>,
           eventsResponse.json() as Promise<LocalEvent[]>,
+          memoriesResponse.json() as Promise<TravelMemory[]>,
         ]);
         if (!Array.isArray(spotData) || spotData.length === 0) {
           throw new Error("表示できるスポットがありません。サンプルデータを確認してください。");
         }
         setSpots(spotData);
         setEvents(eventData);
+        setMemories(memoryData);
         setStatus(statusData);
         setSavedIds(readSavedSpotIds());
+        setVisitedIds(readVisitedSpotIds());
       } catch (cause) {
         setLoadError(cause instanceof Error ? cause.message : "初期データの読み込みに失敗しました。");
       } finally {
@@ -117,6 +136,19 @@ function App() {
       setStorageError(null);
     } catch {
       setStorageError("保存できませんでした。ブラウザーのストレージ設定を確認してください。");
+    }
+  }
+
+  function toggleVisitedSpot(spot: Spot) {
+    const isVisited = visitedIds.includes(spot.id);
+    const nextIds = isVisited ? visitedIds.filter((id) => id !== spot.id) : [...visitedIds, spot.id];
+
+    try {
+      window.localStorage.setItem(visitedStorageKey, JSON.stringify(nextIds));
+      setVisitedIds(nextIds);
+      setStorageError(null);
+    } catch {
+      setStorageError("「行った」状態を保存できませんでした。ブラウザーのストレージ設定を確認してください。");
     }
   }
 
@@ -212,9 +244,10 @@ function App() {
           <button className={activeView === "map" ? "nav-item active" : "nav-item"} onClick={() => setActiveView("map")} type="button"><Icon name="map" /><span>マイマップ</span><span className="nav-count">{savedSpots.length}</span></button>
           <button className={activeView === "route" ? "nav-item active" : "nav-item"} onClick={openAllSavedRoute} type="button"><Icon name="route" /><span>旅行プラン</span></button>
           <button className={activeView === "events" ? "nav-item active" : "nav-item"} onClick={() => setActiveView("events")} type="button"><Icon name="sparkle" /><span>季節の行事</span></button>
+          <button className={activeView === "memories" ? "nav-item active" : "nav-item"} onClick={() => setActiveView("memories")} type="button"><Icon name="bookmark" /><span>思い出</span><span className="nav-count">{visitedIds.length}</span></button>
         </nav>
-        <div className="sidebar-note"><span className="note-star">✳</span><strong>行きたい場所は<br />あとから見つかる。</strong><p>いいねしたスポットは<br />マイマップに残ります。</p></div>
-        <div className="sidebar-bottom"><span className="mini-avatar">y</span><span>気ままな旅好き<small>あなたのウィッシュリスト</small></span></div>
+        <div className="sidebar-note"><span className="note-star">✳</span><strong>行きたい場所も、<br />旅の余韻も。</strong><p>訪れた場所は「行った」で<br />思い出に残せます。</p></div>
+        <div className="sidebar-bottom"><span className="mini-avatar">y</span><span>気ままな旅好き<small>旅の記録とウィッシュリスト</small></span></div>
       </aside>
 
       <main className="main-area">
@@ -227,7 +260,7 @@ function App() {
         <div className="sample-banner" role="note"><span className="banner-sparkle">✳</span><p><strong>※現在サンプルモードで動作中です</strong><span>　表示内容はデモ用データです。地図・SNSサービスには接続していません。</span></p></div>
 
         {storageError && <p className="storage-error" role="alert">{storageError}</p>}
-        {activeView === "feed" && <TriviaToast spots={spots} savedIds={savedIds} onToggleSave={toggleSavedSpot} />}
+        {activeView === "feed" && <TriviaToast spots={spots} savedIds={savedIds} visitedIds={visitedIds} onToggleSave={toggleSavedSpot} onToggleVisited={toggleVisitedSpot} />}
 
         {activeView === "feed" ? (
           <div className="content-layout">
@@ -239,7 +272,9 @@ function App() {
               <HeritageFeatures
                 spots={spots}
                 savedIds={savedIds}
+                visitedIds={visitedIds}
                 onToggleSave={toggleSavedSpot}
+                onToggleVisited={toggleVisitedSpot}
                 onOpenMap={(spot) => { setSelectedSpotId(spot.id); setSelectedRegionId(null); setActiveView("map"); }}
               />
               <div className="category-row" aria-label="スポットのカテゴリー">
@@ -270,6 +305,7 @@ function App() {
                           <div><span className="local-icon nature-icon">森</span><span><small>ここで会いたい</small><strong>{spot.local_species}</strong></span></div>
                         </div>
                         <div className="tag-row">{spot.tags.map((tag) => <span key={tag}># {tag}</span>)}</div>
+                        <button className={visitedIds.includes(spot.id) ? "visited-toggle is-visited feed-visited-toggle" : "visited-toggle feed-visited-toggle"} onClick={() => toggleVisitedSpot(spot)} type="button" aria-pressed={visitedIds.includes(spot.id)}>{visitedIds.includes(spot.id) ? "行った場所に記録済み ✓" : "ここに行ったことがある"}</button>
                       </div>
                     </article>
                   );
@@ -311,8 +347,8 @@ function App() {
                 <div className="map-list-heading"><div><span className="eyebrow">A MAP OF YOUR CURIOSITY</span><h2>{selectedRegion ? `${selectedRegion.name}の景色` : "集めた景色"} <span>{mapSpots.length}</span></h2></div><span className="sort-note">{selectedRegion ? "エリアで絞り込み中" : "すべてのエリア"}</span></div>
                 {savedSpots.length === 0 ? <div className="map-empty"><span className="map-empty-illustration"><Icon name="heart" size={26} /></span><strong>地図は、まだまっさら。</strong><p>フィードで心に残る場所を見つけたら、<br />「行きたい」を押して集めてみて。</p><button className="button-primary" onClick={() => setActiveView("feed")} type="button">景色を見つける <Icon name="arrow" size={16} /></button></div> : mapSpots.length === 0 ? <div className="map-empty region-filter-empty"><span className="map-empty-illustration"><Icon name="map" size={24} /></span><strong>{selectedRegion?.name}のピンは、まだありません。</strong><p>別のエリアを選ぶか、全国の保存スポットを表示してください。</p></div> : (
                   <>
-                    <div className="saved-list">{mapSpots.map((spot) => <button className={`saved-place${selectedMapSpot?.id === spot.id ? " selected" : ""}`} key={spot.id} onClick={() => setSelectedSpotId(spot.id)} type="button" aria-pressed={selectedMapSpot?.id === spot.id}><img src={spot.image_url} alt="" /><span className="saved-place-copy"><small>{spot.prefecture} · {spot.category}</small><strong>{spot.region.split(",")[0]}</strong><span>{spot.local_food}</span></span><span className="saved-heart"><Icon name="heart" size={17} /></span></button>)}</div>
-                    {selectedMapSpot && <article className="map-selected-card"><img src={selectedMapSpot.image_url} alt={`${selectedMapSpot.region}のサンプル写真`} /><div className="map-selected-copy"><span className="eyebrow">SAVED IN YOUR MAP</span>{selectedMapSpot.is_world_heritage && <span className="map-heritage-mark">✦ 世界遺産 · {selectedMapSpot.heritage_name}</span>}<h3>{selectedMapSpot.title}</h3><p>{selectedMapSpot.description}</p><div className="selected-local-info"><span>味わう · {selectedMapSpot.local_food}</span><span>出会う · {selectedMapSpot.local_species}</span></div><div className="map-trivia"><span><Icon name="sparkle" size={13} /> 知ってた？</span><p>{selectedMapSpot.local_trivia}</p></div><button type="button" onClick={() => { setActiveCategory("すべて"); setActiveView("feed"); }}>フィードでもう一度見る <Icon name="arrow" size={14} /></button></div></article>}
+                    <div className="saved-list">{mapSpots.map((spot) => <button className={`saved-place${selectedMapSpot?.id === spot.id ? " selected" : ""}`} key={spot.id} onClick={() => setSelectedSpotId(spot.id)} type="button" aria-pressed={selectedMapSpot?.id === spot.id}><img src={spot.image_url} alt="" /><span className="saved-place-copy"><small>{spot.prefecture} · {spot.category}{visitedIds.includes(spot.id) ? " · 行った" : ""}</small><strong>{spot.region.split(",")[0]}</strong><span>{spot.local_food}</span></span><span className="saved-heart"><Icon name="heart" size={17} /></span></button>)}</div>
+                    {selectedMapSpot && <article className="map-selected-card"><img src={selectedMapSpot.image_url} alt={`${selectedMapSpot.region}のサンプル写真`} /><div className="map-selected-copy"><span className="eyebrow">SAVED IN YOUR MAP</span>{selectedMapSpot.is_world_heritage && <span className="map-heritage-mark">✦ 世界遺産 · {selectedMapSpot.heritage_name}</span>}<h3>{selectedMapSpot.title}</h3><p>{selectedMapSpot.description}</p><div className="selected-local-info"><span>味わう · {selectedMapSpot.local_food}</span><span>出会う · {selectedMapSpot.local_species}</span></div><div className="map-trivia"><span><Icon name="sparkle" size={13} /> 知ってた？</span><p>{selectedMapSpot.local_trivia}</p></div><button type="button" onClick={() => { setActiveCategory("すべて"); setActiveView("feed"); }}>フィードでもう一度見る <Icon name="arrow" size={14} /></button><button className={visitedIds.includes(selectedMapSpot.id) ? "visited-toggle is-visited" : "visited-toggle"} onClick={() => toggleVisitedSpot(selectedMapSpot)} type="button" aria-pressed={visitedIds.includes(selectedMapSpot.id)}>{visitedIds.includes(selectedMapSpot.id) ? "行った場所に記録済み ✓" : "ここに行ったことがある"}</button></div></article>}
                   </>
                 )}
               </div>
@@ -330,14 +366,18 @@ function App() {
             onGenerate={() => void generateRoute()}
             onBrowseFeed={() => setActiveView("feed")}
           />
-        ) : (
+        ) : activeView === "events" ? (
           <EventCalendar
             events={events}
             spots={spots}
             savedIds={savedIds}
+            visitedIds={visitedIds}
             onToggleSave={toggleSavedSpot}
+            onToggleVisited={toggleVisitedSpot}
             onCreateRoute={createEventRoute}
           />
+        ) : (
+          <MemoryJournal memories={memories} spots={spots} visitedIds={visitedIds} onToggleVisited={toggleVisitedSpot} />
         )}
         <footer className="footer"><span>よりみち <b>·</b> 旅心に、寄り道を。</span><span>日本のサンプルスポット · 外部サービス未接続</span></footer>
       </main>
@@ -346,6 +386,7 @@ function App() {
         <button className={activeView === "map" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setActiveView("map")} type="button"><span className="mobile-map-icon"><Icon name="map" size={21} />{savedSpots.length > 0 && <i />}</span><span>マイマップ</span></button>
         <button className={activeView === "route" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={openAllSavedRoute} type="button"><Icon name="route" size={21} /><span>旅行プラン</span></button>
         <button className={activeView === "events" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setActiveView("events")} type="button"><Icon name="sparkle" size={21} /><span>季節の行事</span></button>
+        <button className={activeView === "memories" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setActiveView("memories")} type="button"><Icon name="bookmark" size={21} /><span>思い出</span></button>
       </nav>
     </div>
   );

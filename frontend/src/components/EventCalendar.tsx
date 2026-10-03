@@ -6,7 +6,9 @@ type EventCalendarProps = {
   events: LocalEvent[];
   spots: Spot[];
   savedIds: string[];
+  visitedIds: string[];
   onToggleSave: (spot: Spot) => void;
+  onToggleVisited: (spot: Spot) => void;
   onCreateRoute: (event: LocalEvent) => void;
 };
 
@@ -25,7 +27,7 @@ function getInitialMonth(events: LocalEvent[]): number {
     ?? currentMonth;
 }
 
-export function EventCalendar({ events, spots, savedIds, onToggleSave, onCreateRoute }: EventCalendarProps) {
+export function EventCalendar({ events, spots, savedIds, visitedIds, onToggleSave, onToggleVisited, onCreateRoute }: EventCalendarProps) {
   const [selectedMonth, setSelectedMonth] = useState(() => getInitialMonth(events));
   const eventsForMonth = useMemo(
     () => events.filter((event) => selectedMonth >= event.start_month && selectedMonth <= event.end_month),
@@ -54,10 +56,11 @@ export function EventCalendar({ events, spots, savedIds, onToggleSave, onCreateR
             const spot = getSpot(event.spot_id);
             if (!spot) return null;
             const isSaved = savedIds.includes(spot.id);
+            const isVisited = visitedIds.includes(spot.id);
             return (
               <article className="event-card" key={event.id}>
                 <div className="event-card-visual"><img src={event.image_url} alt={`${event.name}の雰囲気を伝えるサンプル画像`} loading="lazy" /><span className="event-month-badge">{event.best_time}</span>{spot.is_world_heritage && <span className="event-heritage-chip">✦ 世界遺産とめぐる</span>}</div>
-                <div className="event-card-copy"><span className="event-category">{event.category} · {event.region}</span><h3>{event.name}</h3><p>{event.description}</p><div className="event-linked-spot"><img src={spot.image_url} alt="" /><span><small>この季節に出会いたい場所</small><strong>{spot.region.split(",")[0]} · {spot.prefecture}</strong></span>{spot.is_world_heritage && <span className="tiny-heritage-mark">✦</span>}</div><div className="event-card-actions"><button className={isSaved ? "event-save-button saved" : "event-save-button"} onClick={() => onToggleSave(spot)} type="button" aria-pressed={isSaved}><Icon name="heart" size={15} />{isSaved ? "行きたいリストに保存中" : "行きたいリストに保存"}</button><button className="event-route-button" onClick={() => onCreateRoute(event)} type="button">この季節の旅を作る <Icon name="arrow" size={14} /></button></div></div>
+                <div className="event-card-copy"><span className="event-category">{event.category} · {event.region}</span><h3>{event.name}</h3><p>{event.description}</p><div className="event-linked-spot"><img src={spot.image_url} alt="" /><span><small>この季節に出会いたい場所</small><strong>{spot.region.split(",")[0]} · {spot.prefecture}</strong></span>{spot.is_world_heritage && <span className="tiny-heritage-mark">✦</span>}</div><div className="event-card-actions"><button className={isSaved ? "event-save-button saved" : "event-save-button"} onClick={() => onToggleSave(spot)} type="button" aria-pressed={isSaved}><Icon name="heart" size={15} />{isSaved ? "行きたいリストに保存中" : "行きたいリストに保存"}</button><button className="event-route-button" onClick={() => onCreateRoute(event)} type="button">この季節の旅を作る <Icon name="arrow" size={14} /></button></div><button className={isVisited ? "visited-toggle is-visited event-visited-toggle" : "visited-toggle event-visited-toggle"} onClick={() => onToggleVisited(spot)} type="button" aria-pressed={isVisited}>{isVisited ? "行った場所に記録済み ✓" : "ここに行ったことがある"}</button></div>
               </article>
             );
           })}

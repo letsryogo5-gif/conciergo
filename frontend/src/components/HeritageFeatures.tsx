@@ -4,11 +4,13 @@ import { Icon } from "./Icon";
 type HeritageFeaturesProps = {
   spots: Spot[];
   savedIds: string[];
+  visitedIds: string[];
   onToggleSave: (spot: Spot) => void;
+  onToggleVisited: (spot: Spot) => void;
   onOpenMap: (spot: Spot) => void;
 };
 
-export function HeritageFeatures({ spots, savedIds, onToggleSave, onOpenMap }: HeritageFeaturesProps) {
+export function HeritageFeatures({ spots, savedIds, visitedIds, onToggleSave, onToggleVisited, onOpenMap }: HeritageFeaturesProps) {
   const heritageSpots = spots.filter((spot) => spot.is_world_heritage);
   if (heritageSpots.length === 0) return null;
 
@@ -18,10 +20,11 @@ export function HeritageFeatures({ spots, savedIds, onToggleSave, onOpenMap }: H
       <div className="heritage-card-row">
         {heritageSpots.map((spot) => {
           const isSaved = savedIds.includes(spot.id);
+          const isVisited = visitedIds.includes(spot.id);
           return (
             <article className="heritage-card" key={spot.id}>
               <button className="heritage-card-image" onClick={() => onOpenMap(spot)} type="button" aria-label={`${spot.heritage_name}をマイマップで見る`}><img src={spot.image_url} alt={`${spot.region}のサンプル風景`} loading="lazy" /><span className="heritage-crown">✦ WORLD HERITAGE</span><span className="heritage-card-region"><Icon name="pin" size={12} />{spot.prefecture}</span></button>
-              <div className="heritage-card-copy"><span className="heritage-overline">日本の世界遺産</span><h3>{spot.heritage_name}</h3><p>{spot.local_trivia}</p><div className="heritage-card-actions"><button className={isSaved ? "heritage-save saved" : "heritage-save"} onClick={() => onToggleSave(spot)} type="button" aria-pressed={isSaved}><Icon name="heart" size={14} />{isSaved ? "保存中" : "行きたい"}</button><span>地域の豆知識つき</span></div></div>
+              <div className="heritage-card-copy"><span className="heritage-overline">日本の世界遺産</span><h3>{spot.heritage_name}</h3><p>{spot.local_trivia}</p><div className="heritage-card-actions"><button className={isSaved ? "heritage-save saved" : "heritage-save"} onClick={() => onToggleSave(spot)} type="button" aria-pressed={isSaved}><Icon name="heart" size={14} />{isSaved ? "保存中" : "行きたい"}</button><button className={isVisited ? "visited-toggle is-visited" : "visited-toggle"} onClick={() => onToggleVisited(spot)} type="button" aria-pressed={isVisited}>{isVisited ? "行った ✓" : "行った"}</button></div></div>
             </article>
           );
         })}

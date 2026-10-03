@@ -67,3 +67,30 @@ export type RoutePlan = {
   occasion: LocalEvent | null;
   added_spot_ids: string[];
 };
+
+export type MemoryCoordinate = {
+  latitude: number;
+  longitude: number;
+  spot_id: string;
+  label: string;
+};
+
+export type MemoryPhoto = {
+  id: string;
+  image_url: string;
+  caption: string;
+  captured_at: string;
+  latitude: number;
+  longitude: number;
+  spot_id: string;
+};
+
+export type TravelMemory = {
+  id: string;
+  title: string;
+  region: string;
+  visited_at: string;
+  note: string;
+  route: MemoryCoordinate[];
+  photos: MemoryPhoto[];
+};

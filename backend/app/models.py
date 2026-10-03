@@ -35,6 +35,33 @@ class LocalEvent(BaseModel):
     category: str
 
 
+class MemoryCoordinate(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    spot_id: str
+    label: str
+
+
+class MemoryPhoto(BaseModel):
+    id: str
+    image_url: str
+    caption: str
+    captured_at: str
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    spot_id: str
+
+
+class TravelMemory(BaseModel):
+    id: str
+    title: str
+    region: str
+    visited_at: str
+    note: str
+    route: list[MemoryCoordinate]
+    photos: list[MemoryPhoto]
+
+
 class AppStatus(BaseModel):
     sample_mode: bool
     services: dict[str, str]

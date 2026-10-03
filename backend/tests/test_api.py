@@ -1,4 +1,5 @@
 import unittest
+from datetime import date, datetime
 
 from fastapi.testclient import TestClient
 
@@ -61,6 +62,28 @@ class DiscoveryApiTests(unittest.TestCase):
                 for event in events
             )
         )
+
+    def test_memories_include_ordered_routes_and_geotagged_sample_photos(self) -> None:
+        response = self.client.get("/api/memories")
+
+        self.assertEqual(response.status_code, 200)
+        memories = response.json()
+        known_spot_ids = {spot.id for spot in SPOTS}
+        self.assertGreaterEqual(len(memories), 2)
+        for memory in memories:
+            date.fromisoformat(memory["visited_at"])
+            self.assertTrue(memory["route"])
+            self.assertTrue(memory["photos"])
+            route_ids = {point["spot_id"] for point in memory["route"]}
+            self.assertTrue(route_ids.issubset(known_spot_ids))
+            for photo in memory["photos"]:
+                datetime.fromisoformat(photo["captured_at"])
+                self.assertTrue(
+                    photo["spot_id"] in route_ids
+                    and photo["image_url"]
+                    and -90 <= photo["latitude"] <= 90
+                    and -180 <= photo["longitude"] <= 180
+                )
 
     def test_saved_spot_can_be_loaded_again_by_id(self) -> None:
         response = self.client.get("/api/spots/fuji-shibazakura")

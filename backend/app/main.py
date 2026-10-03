@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.integrations import google_maps, social
 from app.event_sample_data import SAMPLE_EVENTS
-from app.models import AppStatus, LocalEvent, RoutePlan, RouteRequest, Spot
+from app.memory_sample_data import SAMPLE_MEMORIES
+from app.models import AppStatus, LocalEvent, RoutePlan, RouteRequest, Spot, TravelMemory
 from app.sample_data import SAMPLE_MODE
 from app.services.discovery import get_sample_spot, list_sample_spots
 from app.services.routes import create_sample_route
@@ -49,6 +50,11 @@ def spot(spot_id: str) -> Spot:
 @app.get("/api/events", response_model=list[LocalEvent])
 def events() -> list[LocalEvent]:
     return SAMPLE_EVENTS.copy()
+
+
+@app.get("/api/memories", response_model=list[TravelMemory])
+def memories() -> list[TravelMemory]:
+    return SAMPLE_MEMORIES.copy()
 
 
 @app.post("/api/routes", response_model=RoutePlan)

@@ -5,10 +5,12 @@ import { Icon } from "./Icon";
 type TriviaToastProps = {
   spots: Spot[];
   savedIds: string[];
+  visitedIds: string[];
   onToggleSave: (spot: Spot) => void;
+  onToggleVisited: (spot: Spot) => void;
 };
 
-export function TriviaToast({ spots, savedIds, onToggleSave }: TriviaToastProps) {
+export function TriviaToast({ spots, savedIds, visitedIds, onToggleSave, onToggleVisited }: TriviaToastProps) {
   const [spotIndex, setSpotIndex] = useState(0);
   const [visible, setVisible] = useState(false);
 
@@ -36,12 +38,13 @@ export function TriviaToast({ spots, savedIds, onToggleSave }: TriviaToastProps)
 
   const spot = spots[spotIndex % spots.length];
   const isSaved = savedIds.includes(spot.id);
+  const isVisited = visitedIds.includes(spot.id);
 
   return (
     <aside className={`trivia-toast${visible ? " is-visible" : ""}`} aria-live="polite" aria-label="地域のちょこっと豆知識">
       <div className="trivia-toast-top"><span className="trivia-orbit"><Icon name="sparkle" size={15} /></span><span><small>DID YOU KNOW?</small><strong>知ってた？</strong></span><button className="trivia-dismiss" onClick={() => setVisible(false)} type="button" aria-label="豆知識を閉じる">×</button></div>
       <p>{spot.local_trivia}</p>
-      <div className="trivia-toast-bottom"><span><Icon name="pin" size={12} /> {spot.region.split(",")[0]} · {spot.prefecture}</span><button className={isSaved ? "trivia-save saved" : "trivia-save"} onClick={() => onToggleSave(spot)} type="button" aria-pressed={isSaved}><Icon name="heart" size={14} />{isSaved ? "保存中" : "行きたい"}</button></div>
+      <div className="trivia-toast-bottom"><span><Icon name="pin" size={12} /> {spot.region.split(",")[0]} · {spot.prefecture}</span><div className="trivia-toast-actions"><button className={isVisited ? "visited-toggle is-visited" : "visited-toggle"} onClick={() => onToggleVisited(spot)} type="button" aria-pressed={isVisited}>{isVisited ? "行った ✓" : "行った"}</button><button className={isSaved ? "trivia-save saved" : "trivia-save"} onClick={() => onToggleSave(spot)} type="button" aria-pressed={isSaved}><Icon name="heart" size={14} />{isSaved ? "保存中" : "行きたい"}</button></div></div>
     </aside>
   );
 }
