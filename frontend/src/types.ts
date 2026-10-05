@@ -68,6 +68,30 @@ export type RoutePlan = {
   added_spot_ids: string[];
 };
 
+export type RouteRequest = {
+  spot_ids: string[];
+  event_id: string | null;
+};
+
+export type ModelCourse = {
+  id: string;
+  title: string;
+  description: string;
+  region: string;
+  creator: string;
+  image_url: string;
+  spot_ids: string[];
+  likes: number;
+};
+
+export type ModelCourseRequest = {
+  title: string;
+  description: string;
+  region: string;
+  creator: string;
+  spot_ids: string[];
+};
+
 export type MemoryCoordinate = {
   latitude: number;
   longitude: number;

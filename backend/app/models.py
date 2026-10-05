@@ -62,6 +62,32 @@ class TravelMemory(BaseModel):
     photos: list[MemoryPhoto]
 
 
+class ModelCourse(BaseModel):
+    id: str
+    title: str
+    description: str
+    region: str
+    creator: str
+    image_url: str
+    spot_ids: list[str]
+    likes: int = Field(ge=0)
+
+
+class ModelCourseRequest(BaseModel):
+    title: str = Field(min_length=3, max_length=90)
+    description: str = Field(min_length=1, max_length=500)
+    region: str = Field(min_length=1, max_length=80)
+    creator: str = Field(default="よりみちユーザー", min_length=1, max_length=40)
+    spot_ids: list[str] = Field(min_length=1, max_length=30)
+
+    @field_validator("spot_ids")
+    @classmethod
+    def spot_ids_must_be_unique(cls, spot_ids: list[str]) -> list[str]:
+        if len(set(spot_ids)) != len(spot_ids):
+            raise ValueError("スポット ID を重複して指定できません。")
+        return spot_ids
+
+
 class AppStatus(BaseModel):
     sample_mode: bool
     services: dict[str, str]

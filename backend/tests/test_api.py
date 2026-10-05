@@ -85,6 +85,58 @@ class DiscoveryApiTests(unittest.TestCase):
                     and -180 <= photo["longitude"] <= 180
                 )
 
+    def test_model_course_feed_contains_the_setouchi_sample_itinerary(self) -> None:
+        response = self.client.get("/api/model-courses")
+
+        self.assertEqual(response.status_code, 200)
+        courses = response.json()
+        setouchi_course = next(
+            course for course in courses if course["id"] == "setouchi-udon-towel-yaki"
+        )
+        self.assertIn("香川・愛媛", setouchi_course["title"])
+        self.assertEqual(
+            set(setouchi_course["spot_ids"]),
+            {
+                "kagawa-sanuki-udon",
+                "imabari-towel-museum",
+                "matsuyama-mitsuhama-yaki",
+            },
+        )
+        self.assertTrue(all(spot_id in {spot.id for spot in SPOTS} for spot_id in setouchi_course["spot_ids"]))
+
+    def test_published_model_course_is_returned_by_the_sample_api(self) -> None:
+        request = {
+            "title": "瀬戸内の味をめぐる小さな旅",
+            "description": "うどんと港町の味を楽しむコース。",
+            "region": "香川・愛媛",
+            "creator": "テストの旅人",
+            "spot_ids": ["kagawa-sanuki-udon", "matsuyama-mitsuhama-yaki"],
+        }
+
+        response = self.client.post("/api/model-courses", json=request)
+
+        self.assertEqual(response.status_code, 201)
+        published = response.json()
+        self.assertEqual(published["title"], request["title"])
+        self.assertEqual(published["spot_ids"], request["spot_ids"])
+        self.assertEqual(published["likes"], 0)
+        listed = self.client.get("/api/model-courses").json()
+        self.assertEqual(listed[0]["id"], published["id"])
+
+    def test_model_course_rejects_duplicate_and_unknown_spots(self) -> None:
+        request = {
+            "title": "確認用モデルコース",
+            "description": "スポット入力の検証。",
+            "region": "香川",
+            "spot_ids": ["kagawa-sanuki-udon", "kagawa-sanuki-udon"],
+        }
+        duplicate = self.client.post("/api/model-courses", json=request)
+        request["spot_ids"] = ["missing-spot"]
+        unknown = self.client.post("/api/model-courses", json=request)
+
+        self.assertEqual(duplicate.status_code, 422)
+        self.assertEqual(unknown.status_code, 404)
+
     def test_saved_spot_can_be_loaded_again_by_id(self) -> None:
         response = self.client.get("/api/spots/fuji-shibazakura")
 
@@ -117,6 +169,22 @@ class DiscoveryApiTests(unittest.TestCase):
         self.assertTrue(all(day["start_time"] == "09:00" for day in route["days"]))
         self.assertIn("直線距離", route["note"])
         self.assertIn("日をまたぐ移動は考慮していません", route["note"])
+
+    def test_route_uses_only_the_selected_spot_ids(self) -> None:
+        response = self.client.post(
+            "/api/routes",
+            json={"spot_ids": ["kagawa-sanuki-udon"]},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        route = response.json()
+        route_spot_ids = {
+            stop["spot"]["id"]
+            for day in route["days"]
+            for stop in day["stops"]
+        }
+        self.assertEqual(route["total_spots"], 1)
+        self.assertEqual(route_spot_ids, {"kagawa-sanuki-udon"})
 
     def test_route_requires_unique_known_spots(self) -> None:
         empty = self.client.post("/api/routes", json={"spot_ids": []})

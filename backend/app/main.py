@@ -4,9 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.integrations import google_maps, social
 from app.event_sample_data import SAMPLE_EVENTS
 from app.memory_sample_data import SAMPLE_MEMORIES
-from app.models import AppStatus, LocalEvent, RoutePlan, RouteRequest, Spot, TravelMemory
+from app.models import AppStatus, LocalEvent, ModelCourse, ModelCourseRequest, RoutePlan, RouteRequest, Spot, TravelMemory
 from app.sample_data import SAMPLE_MODE
 from app.services.discovery import get_sample_spot, list_sample_spots
+from app.services.model_courses import list_model_courses, publish_model_course
 from app.services.routes import create_sample_route
 
 app = FastAPI(title="よりみち | 地域の魅力発見", version="1.0.0")
@@ -55,6 +56,19 @@ def events() -> list[LocalEvent]:
 @app.get("/api/memories", response_model=list[TravelMemory])
 def memories() -> list[TravelMemory]:
     return SAMPLE_MEMORIES.copy()
+
+
+@app.get("/api/model-courses", response_model=list[ModelCourse])
+def model_courses() -> list[ModelCourse]:
+    return list_model_courses()
+
+
+@app.post("/api/model-courses", response_model=ModelCourse, status_code=201)
+def create_model_course(request: ModelCourseRequest) -> ModelCourse:
+    try:
+        return publish_model_course(request, list_sample_spots())
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @app.post("/api/routes", response_model=RoutePlan)

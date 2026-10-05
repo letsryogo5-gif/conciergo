@@ -1,14 +1,21 @@
+import { useEffect, useState } from "react";
 import type { LocalEvent, RoutePlan, Spot } from "../types";
 import { Icon } from "./Icon";
 
 type RoutePlannerProps = {
   savedSpots: Spot[];
+  selectedSpotIds: string[];
   areaName: string | null;
   event: LocalEvent | null;
   routePlan: RoutePlan | null;
   loading: boolean;
   error: string | null;
-  onGenerate: () => void;
+  sharing: boolean;
+  shareMessage: string | null;
+  shareError: string | null;
+  onSelectionChange: (spotIds: string[]) => void;
+  onGenerate: (spotIds: string[]) => void;
+  onShare: (title: string) => void;
   onBrowseFeed: () => void;
 };
 
@@ -21,14 +28,51 @@ function formatMinutes(minutes: number): string {
 
 export function RoutePlanner({
   savedSpots,
+  selectedSpotIds,
   areaName,
   event,
   routePlan,
   loading,
   error,
+  sharing,
+  shareMessage,
+  shareError,
+  onSelectionChange,
   onGenerate,
+  onShare,
   onBrowseFeed,
 }: RoutePlannerProps) {
+  const [shareTitle, setShareTitle] = useState("");
+  const [selectedPrefecture, setSelectedPrefecture] = useState<string | null>(null);
+  const selectedIds = selectedSpotIds.filter((spotId) => savedSpots.some((spot) => spot.id === spotId));
+  const prefectures = [...new Set(savedSpots.map((spot) => spot.prefecture))];
+  const visibleSpots = selectedPrefecture
+    ? savedSpots.filter((spot) => spot.prefecture === selectedPrefecture)
+    : savedSpots;
+  const allVisibleSelected = visibleSpots.length > 0
+    && visibleSpots.every((spot) => selectedIds.includes(spot.id));
+
+  function toggleSpot(spotId: string) {
+    onSelectionChange(
+      selectedIds.includes(spotId)
+        ? selectedIds.filter((id) => id !== spotId)
+        : [...selectedIds, spotId],
+    );
+  }
+
+  useEffect(() => {
+    if (!routePlan) return;
+    const firstSpot = routePlan.days[0]?.stops[0]?.spot;
+    const title = event
+      ? `${event.name}を楽しむ${event.region}の旅`
+      : areaName
+        ? `${areaName}をめぐるよりみちコース`
+        : firstSpot
+          ? `${firstSpot.prefecture}から始まるよりみちコース`
+          : "わたしのよりみちコース";
+    setShareTitle(title);
+  }, [areaName, event, routePlan]);
+
   return (
     <section className="route-page" aria-label="旅行プラン">
       <div className="route-page-intro">
@@ -45,9 +89,80 @@ export function RoutePlanner({
         </div>
       ) : (
         <>
+          <section className="route-spot-picker" aria-label="今回の旅行で訪れるスポット">
+            <div className="route-spot-picker-heading">
+              <div>
+                <span className="eyebrow">CHOOSE YOUR STOPS</span>
+                <h2>今回の旅で行きたい場所</h2>
+                <p>選んだスポットだけでタイムラインを作成します。</p>
+              </div>
+              <span className="route-selection-count">{selectedIds.length}<small> / {savedSpots.length} SPOTS</small></span>
+            </div>
+            <div className="route-region-filter" role="group" aria-label="都道府県でスポットを絞り込む">
+              <button
+                aria-pressed={selectedPrefecture === null}
+                className={selectedPrefecture === null ? "is-active" : ""}
+                onClick={() => setSelectedPrefecture(null)}
+                type="button"
+              >
+                すべて <span>{savedSpots.length}</span>
+              </button>
+              {prefectures.map((prefecture) => {
+                const count = savedSpots.filter((spot) => spot.prefecture === prefecture).length;
+                return (
+                  <button
+                    aria-pressed={selectedPrefecture === prefecture}
+                    className={selectedPrefecture === prefecture ? "is-active" : ""}
+                    key={prefecture}
+                    onClick={() => setSelectedPrefecture(prefecture)}
+                    type="button"
+                  >
+                    {prefecture} <span>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="route-spot-picker-actions">
+              <button
+                disabled={allVisibleSelected}
+                onClick={() => onSelectionChange([...new Set([...selectedIds, ...visibleSpots.map((spot) => spot.id)])])}
+                type="button"
+              >
+                表示中を選択
+              </button>
+              <button
+                disabled={!visibleSpots.some((spot) => selectedIds.includes(spot.id))}
+                onClick={() => {
+                  const visibleIds = new Set(visibleSpots.map((spot) => spot.id));
+                  onSelectionChange(selectedIds.filter((spotId) => !visibleIds.has(spotId)));
+                }}
+                type="button"
+              >
+                表示中を解除
+              </button>
+            </div>
+            <ul className="route-spot-picker-list">
+              {visibleSpots.map((spot) => {
+                const checked = selectedIds.includes(spot.id);
+                return (
+                  <li key={spot.id}>
+                    <label className={checked ? "route-spot-option is-selected" : "route-spot-option"}>
+                      <input
+                        checked={checked}
+                        onChange={() => toggleSpot(spot.id)}
+                        type="checkbox"
+                      />
+                      <img src={spot.image_url} alt="" />
+                      <span><strong>{spot.region.split(",")[0]}</strong><small>{spot.prefecture} · {spot.local_food}</small></span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
           <div className="route-create-row">
-            <div><span className="eyebrow">YOUR WISH LIST</span><strong>{savedSpots.length}か所の「行きたい」スポット</strong><span>スポットを追加・解除するとプランはリセットされます。</span></div>
-            <button className="button-primary route-generate-button" disabled={loading} onClick={onGenerate} type="button"><Icon name="sparkle" size={16} />{loading ? "プランを組み立て中…" : routePlan ? "プランを作り直す" : "旅行プランを作る"}<Icon name="arrow" size={15} /></button>
+            <div><span className="eyebrow">YOUR WISH LIST</span><strong>{selectedIds.length}か所を今回のルートに選択</strong><span>マイマップに保存した場所から選べます。</span></div>
+            <button className="button-primary route-generate-button" disabled={loading || selectedIds.length === 0} onClick={() => onGenerate(selectedIds)} type="button"><Icon name="sparkle" size={16} />{loading ? "プランを組み立て中…" : routePlan ? "選んだ場所で作り直す" : "選んだ場所で旅行プランを作る"}<Icon name="arrow" size={15} /></button>
           </div>
           {error && <p className="route-error" role="alert">{error}</p>}
           {routePlan ? (
@@ -75,6 +190,15 @@ export function RoutePlanner({
                 ))}
               </div>
               <p className="route-disclaimer">{routePlan.note}</p>
+              <div className="route-share-panel">
+                <div><span className="eyebrow">PASS THE INSPIRATION ON</span><strong>この旅のかけらを、誰かの次の旅へ。</strong><p>公開すると「モデルコース」タブに表示されます。</p></div>
+                <label>コース名<input maxLength={90} onChange={(changeEvent) => setShareTitle(changeEvent.target.value)} value={shareTitle} /></label>
+                <button className="button-primary" disabled={sharing || !shareTitle.trim()} onClick={() => onShare(shareTitle.trim())} type="button">
+                  <Icon name="arrow" size={15} />{sharing ? "公開しています…" : "モデルコースとして公開"}
+                </button>
+                {shareMessage && <p className="route-share-message" role="status">{shareMessage}</p>}
+                {shareError && <p className="route-share-error" role="alert">{shareError}</p>}
+              </div>
             </>
           ) : (
             <div className="route-preview">

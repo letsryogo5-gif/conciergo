@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { AppStatus, LocalEvent, RoutePlan, Spot, TravelMemory } from "./types";
+import type { AppStatus, LocalEvent, ModelCourse, ModelCourseRequest, RoutePlan, RouteRequest, Spot, TravelMemory } from "./types";
 import { Icon } from "./components/Icon";
 import { RoutePlanner } from "./components/RoutePlanner";
 import { RegionalMap } from "./components/RegionalMap";
@@ -8,10 +8,11 @@ import { TriviaToast } from "./components/TriviaToast";
 import { EventCalendar } from "./components/EventCalendar";
 import { HeritageFeatures } from "./components/HeritageFeatures";
 import { MemoryJournal } from "./components/MemoryJournal";
+import { ModelCourseDiscover } from "./components/ModelCourseDiscover";
 import type { RegionalRecommendation } from "./components/RegionalRecommendations";
 import { getRegionalSpotGroups, REGION_PIN_THRESHOLD } from "./regions";
 
-type View = "feed" | "map" | "route" | "events" | "memories";
+type View = "feed" | "map" | "route" | "events" | "memories" | "discover";
 
 const categories = ["すべて", "秘境", "季節の絶景", "海辺のまち", "まち歩き", "野生のいきもの"];
 const favoritesStorageKey = "yorimichi-wishlist";
@@ -43,6 +44,7 @@ function App() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [events, setEvents] = useState<LocalEvent[]>([]);
   const [memories, setMemories] = useState<TravelMemory[]>([]);
+  const [modelCourses, setModelCourses] = useState<ModelCourse[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [visitedIds, setVisitedIds] = useState<string[]>([]);
   const [status, setStatus] = useState<AppStatus | null>(null);
@@ -52,10 +54,15 @@ function App() {
   const [routeEvent, setRouteEvent] = useState<LocalEvent | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [routeShareLoading, setRouteShareLoading] = useState(false);
+  const [routeShareMessage, setRouteShareMessage] = useState<string | null>(null);
+  const [routeShareError, setRouteShareError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>("feed");
   const [activeCategory, setActiveCategory] = useState("すべて");
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
+  const [routeSelectionMode, setRouteSelectionMode] = useState(false);
+  const [selectedRouteSpotIds, setSelectedRouteSpotIds] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -63,21 +70,23 @@ function App() {
   useEffect(() => {
     async function loadSampleData() {
       try {
-        const [spotsResponse, statusResponse, eventsResponse, memoriesResponse] = await Promise.all([
+        const [spotsResponse, statusResponse, eventsResponse, memoriesResponse, modelCoursesResponse] = await Promise.all([
           fetch("/api/spots"),
           fetch("/api/status"),
           fetch("/api/events"),
           fetch("/api/memories"),
+          fetch("/api/model-courses"),
         ]);
-        if (!spotsResponse.ok || !statusResponse.ok || !eventsResponse.ok || !memoriesResponse.ok) {
+        if (!spotsResponse.ok || !statusResponse.ok || !eventsResponse.ok || !memoriesResponse.ok || !modelCoursesResponse.ok) {
           throw new Error("サンプルデータを読み込めませんでした。バックエンドが起動しているか確認してください。");
         }
 
-        const [spotData, statusData, eventData, memoryData] = await Promise.all([
+        const [spotData, statusData, eventData, memoryData, modelCourseData] = await Promise.all([
           spotsResponse.json() as Promise<Spot[]>,
           statusResponse.json() as Promise<AppStatus>,
           eventsResponse.json() as Promise<LocalEvent[]>,
           memoriesResponse.json() as Promise<TravelMemory[]>,
+          modelCoursesResponse.json() as Promise<ModelCourse[]>,
         ]);
         if (!Array.isArray(spotData) || spotData.length === 0) {
           throw new Error("表示できるスポットがありません。サンプルデータを確認してください。");
@@ -85,6 +94,7 @@ function App() {
         setSpots(spotData);
         setEvents(eventData);
         setMemories(memoryData);
+        setModelCourses(modelCourseData);
         setStatus(statusData);
         setSavedIds(readSavedSpotIds());
         setVisitedIds(readVisitedSpotIds());
@@ -113,9 +123,6 @@ function App() {
   const mapSpots = selectedRegionId
     ? regionalGroups.find(({ region }) => region.id === selectedRegionId)?.spots ?? []
     : savedSpots;
-  const routeSpots = routeSpotIds
-    ? savedSpots.filter((spot) => routeSpotIds.includes(spot.id))
-    : savedSpots;
   const visibleSpots = useMemo(
     () => activeCategory === "すべて" ? spots : spots.filter((spot) => spot.category === activeCategory),
     [activeCategory, spots],
@@ -129,6 +136,7 @@ function App() {
     try {
       window.localStorage.setItem(favoritesStorageKey, JSON.stringify(nextIds));
       setSavedIds(nextIds);
+      setSelectedRouteSpotIds((current) => current?.filter((id) => nextIds.includes(id)) ?? null);
       setRoutePlan(null);
       setRouteSpotIds(null);
       setRouteAreaName(null);
@@ -161,15 +169,21 @@ function App() {
 
     setRouteLoading(true);
     setRouteError(null);
+    setRouteShareMessage(null);
+    setRouteShareError(null);
     setRoutePlan(null);
     setRouteSpotIds(spotIds);
     setRouteAreaName(areaName);
     setRouteEvent(event);
     try {
+      const routeRequest: RouteRequest = {
+        spot_ids: [...spotIds],
+        event_id: event?.id ?? null,
+      };
       const response = await fetch("/api/routes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spot_ids: spotIds, event_id: event?.id ?? null }),
+        body: JSON.stringify(routeRequest),
       });
       if (!response.ok) {
         const body = (await response.json()) as { detail?: string };
@@ -181,6 +195,131 @@ function App() {
     } finally {
       setRouteLoading(false);
     }
+  }
+
+  async function shareCurrentRoute(title: string) {
+    if (!routePlan || !title.trim()) return;
+
+    const spotIds = [...new Set(routePlan.days.flatMap((day) => day.stops.map((stop) => stop.spot.id)))];
+    if (spotIds.length === 0) {
+      setRouteShareError("共有できるスポットが含まれていません。");
+      return;
+    }
+    const routeSpots = spotIds
+      .map((spotId) => spots.find((spot) => spot.id === spotId))
+      .filter((spot): spot is Spot => spot !== undefined);
+    if (routeSpots.length !== spotIds.length) {
+      setRouteShareError("ルート内のスポット情報が不足しているため、共有できません。");
+      return;
+    }
+    const region = routeAreaName
+      ?? [...new Set(routeSpots.map((spot) => spot.prefecture))].join("・");
+    const description = routeEvent
+      ? `${routeEvent.name}の開催目安に合わせた、${routeEvent.region}のサンプル旅行コースです。`
+      : `${region}のスポットをつないだ、よりみち発のサンプル旅行コースです。`;
+    const request: ModelCourseRequest = {
+      title: title.trim(),
+      description,
+      region,
+      creator: "よりみちユーザー",
+      spot_ids: spotIds,
+    };
+
+    setRouteShareLoading(true);
+    setRouteShareMessage(null);
+    setRouteShareError(null);
+    try {
+      const response = await fetch("/api/model-courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      });
+      if (!response.ok) {
+        const body = (await response.json()) as { detail?: string };
+        throw new Error(body.detail ?? "モデルコースを公開できませんでした。");
+      }
+      const publishedCourse = (await response.json()) as ModelCourse;
+      setModelCourses((current) => [publishedCourse, ...current.filter((course) => course.id !== publishedCourse.id)]);
+      setRouteShareMessage("モデルコースを公開しました。「モデルコース」から確認できます。");
+    } catch (cause) {
+      setRouteShareError(cause instanceof Error ? cause.message : "モデルコースの公開に失敗しました。");
+    } finally {
+      setRouteShareLoading(false);
+    }
+  }
+
+  function saveModelCourseSpot(spot: Spot) {
+    if (!spots.some((availableSpot) => availableSpot.id === spot.id)) {
+      setStorageError(`スポット情報を読み込めません: ${spot.id}`);
+      return;
+    }
+
+    const nextIds = [...new Set([...savedIds, spot.id])];
+    try {
+      window.localStorage.setItem(favoritesStorageKey, JSON.stringify(nextIds));
+      setSavedIds(nextIds);
+      setRouteSpotIds(null);
+      setRouteAreaName(null);
+      setRouteEvent(null);
+      setRoutePlan(null);
+      setRouteError(null);
+      setStorageError(null);
+    } catch {
+      setStorageError("スポットを保存できませんでした。ブラウザーのストレージ設定を確認してください。");
+    }
+  }
+
+  function updateRouteSelection(spotIds: string[]) {
+    const uniqueIds = [...new Set(spotIds)].filter((spotId) => savedIds.includes(spotId));
+    const areaName = regionalGroups.find(({ spots: regionSpots }) =>
+      uniqueIds.length > 0 && uniqueIds.every((spotId) => regionSpots.some((spot) => spot.id === spotId)),
+    )?.region.name ?? null;
+    setRouteSpotIds(uniqueIds);
+    setRouteAreaName(areaName);
+    setRouteEvent(null);
+    setRoutePlan(null);
+    setRouteError(null);
+    setRouteShareMessage(null);
+    setRouteShareError(null);
+  }
+
+  function toggleRouteSelectionMode() {
+    if (routeSelectionMode) {
+      setRouteSelectionMode(false);
+      return;
+    }
+    setSelectedRouteSpotIds((current) => current ?? []);
+    setRouteSelectionMode(true);
+  }
+
+  function toggleRouteSpot(spotId: string) {
+    setSelectedRouteSpotIds((current) => {
+      const selectedIds = current ?? [];
+      return selectedIds.includes(spotId)
+        ? selectedIds.filter((id) => id !== spotId)
+        : [...selectedIds, spotId];
+    });
+  }
+
+  function selectVisibleRouteSpots() {
+    const visibleIds = mapSpots.map((spot) => spot.id);
+    setSelectedRouteSpotIds((current) => [...new Set([...(current ?? []), ...visibleIds])]);
+  }
+
+  function clearRouteSpotSelection() {
+    setSelectedRouteSpotIds([]);
+  }
+
+  function createSelectedRoute() {
+    const spotIds = selectedRouteSpotIds ?? [];
+    if (spotIds.length === 0) return;
+
+    const areaName = regionalGroups.find(({ spots: regionSpots }) =>
+      spotIds.every((spotId) => regionSpots.some((spot) => spot.id === spotId)),
+    )?.region.name ?? null;
+    setRouteSelectionMode(false);
+    setActiveView("route");
+    void generateRoute(spotIds, areaName);
   }
 
   function openAllSavedRoute() {
@@ -243,6 +382,7 @@ function App() {
           <button className={activeView === "feed" ? "nav-item active" : "nav-item"} onClick={() => setActiveView("feed")} type="button"><Icon name="compass" /><span>見つける</span></button>
           <button className={activeView === "map" ? "nav-item active" : "nav-item"} onClick={() => setActiveView("map")} type="button"><Icon name="map" /><span>マイマップ</span><span className="nav-count">{savedSpots.length}</span></button>
           <button className={activeView === "route" ? "nav-item active" : "nav-item"} onClick={openAllSavedRoute} type="button"><Icon name="route" /><span>旅行プラン</span></button>
+          <button className={activeView === "discover" ? "nav-item active" : "nav-item"} onClick={() => setActiveView("discover")} type="button"><Icon name="compass" /><span>モデルコース</span><span className="nav-count">{modelCourses.length}</span></button>
           <button className={activeView === "events" ? "nav-item active" : "nav-item"} onClick={() => setActiveView("events")} type="button"><Icon name="sparkle" /><span>季節の行事</span></button>
           <button className={activeView === "memories" ? "nav-item active" : "nav-item"} onClick={() => setActiveView("memories")} type="button"><Icon name="bookmark" /><span>思い出</span><span className="nav-count">{visitedIds.length}</span></button>
         </nav>
@@ -280,6 +420,11 @@ function App() {
               <div className="category-row" aria-label="スポットのカテゴリー">
                 {categories.map((category) => <button key={category} className={`category-chip${activeCategory === category ? " selected" : ""}`} onClick={() => setActiveCategory(category)} type="button">{category}</button>)}
               </div>
+              <button className="feed-model-course-invite" onClick={() => setActiveView("discover")} type="button">
+                <span className="feed-model-course-icon"><Icon name="route" size={17} /></span>
+                <span><small>JOURNEYS SHARED BY TRAVELERS</small><strong>誰かのモデルコースをのぞいてみる</strong></span>
+                <Icon name="arrow" size={16} />
+              </button>
               <RegionalRecommendations recommendations={recommendations} compact onCreateRoute={createRegionalRoute} />
 
               <div className="feed-list">
@@ -344,10 +489,59 @@ function App() {
             <div className="map-layout">
               <RegionalMap spots={savedSpots} selectedRegionId={selectedRegionId} onSelectRegion={setSelectedRegionId} />
               <div className="map-detail-column">
+                <div className="map-selection-header">
+                  <button
+                    aria-pressed={routeSelectionMode}
+                    className={`map-selection-toggle${routeSelectionMode ? " is-active" : ""}`}
+                    onClick={toggleRouteSelectionMode}
+                    type="button"
+                  >
+                    {routeSelectionMode ? "選択モードを終了" : "今回のスポットを選ぶ"}
+                  </button>
+                  {routeSelectionMode && <span>{selectedRouteSpotIds?.length ?? 0}件を選択中</span>}
+                </div>
                 <div className="map-list-heading"><div><span className="eyebrow">A MAP OF YOUR CURIOSITY</span><h2>{selectedRegion ? `${selectedRegion.name}の景色` : "集めた景色"} <span>{mapSpots.length}</span></h2></div><span className="sort-note">{selectedRegion ? "エリアで絞り込み中" : "すべてのエリア"}</span></div>
+                {routeSelectionMode && (
+                  <div className="map-selection-tools">
+                    <p>チェックしたスポットだけを今回のルートに組み込みます。</p>
+                    <div>
+                      <button onClick={selectVisibleRouteSpots} type="button">表示中をすべて選択</button>
+                      <button onClick={clearRouteSpotSelection} type="button">選択を解除</button>
+                      <button
+                        className="button-primary"
+                        disabled={!selectedRouteSpotIds?.length || routeLoading}
+                        onClick={createSelectedRoute}
+                        type="button"
+                      >
+                        {selectedRouteSpotIds?.length ?? 0}件でルートを作成 <Icon name="arrow" size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {savedSpots.length === 0 ? <div className="map-empty"><span className="map-empty-illustration"><Icon name="heart" size={26} /></span><strong>地図は、まだまっさら。</strong><p>フィードで心に残る場所を見つけたら、<br />「行きたい」を押して集めてみて。</p><button className="button-primary" onClick={() => setActiveView("feed")} type="button">景色を見つける <Icon name="arrow" size={16} /></button></div> : mapSpots.length === 0 ? <div className="map-empty region-filter-empty"><span className="map-empty-illustration"><Icon name="map" size={24} /></span><strong>{selectedRegion?.name}のピンは、まだありません。</strong><p>別のエリアを選ぶか、全国の保存スポットを表示してください。</p></div> : (
                   <>
-                    <div className="saved-list">{mapSpots.map((spot) => <button className={`saved-place${selectedMapSpot?.id === spot.id ? " selected" : ""}`} key={spot.id} onClick={() => setSelectedSpotId(spot.id)} type="button" aria-pressed={selectedMapSpot?.id === spot.id}><img src={spot.image_url} alt="" /><span className="saved-place-copy"><small>{spot.prefecture} · {spot.category}{visitedIds.includes(spot.id) ? " · 行った" : ""}</small><strong>{spot.region.split(",")[0]}</strong><span>{spot.local_food}</span></span><span className="saved-heart"><Icon name="heart" size={17} /></span></button>)}</div>
+                    <div className="saved-list">{mapSpots.map((spot) => {
+                      const routeSelected = selectedRouteSpotIds?.includes(spot.id) ?? false;
+                      return (
+                        <div className={`saved-place-row${routeSelectionMode && routeSelected ? " is-route-selected" : ""}`} key={spot.id}>
+                          <button className={`saved-place${selectedMapSpot?.id === spot.id ? " selected" : ""}`} onClick={() => setSelectedSpotId(spot.id)} type="button" aria-pressed={selectedMapSpot?.id === spot.id}>
+                            <img src={spot.image_url} alt="" />
+                            <span className="saved-place-copy"><small>{spot.prefecture} · {spot.category}{visitedIds.includes(spot.id) ? " · 行った" : ""}</small><strong>{spot.region.split(",")[0]}</strong><span>{spot.local_food}</span></span>
+                            <span className="saved-heart"><Icon name="heart" size={17} /></span>
+                          </button>
+                          {routeSelectionMode && (
+                            <label className="route-spot-checkbox">
+                              <input
+                                checked={routeSelected}
+                                onChange={() => toggleRouteSpot(spot.id)}
+                                type="checkbox"
+                              />
+                              <span>今回</span>
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}</div>
                     {selectedMapSpot && <article className="map-selected-card"><img src={selectedMapSpot.image_url} alt={`${selectedMapSpot.region}のサンプル写真`} /><div className="map-selected-copy"><span className="eyebrow">SAVED IN YOUR MAP</span>{selectedMapSpot.is_world_heritage && <span className="map-heritage-mark">✦ 世界遺産 · {selectedMapSpot.heritage_name}</span>}<h3>{selectedMapSpot.title}</h3><p>{selectedMapSpot.description}</p><div className="selected-local-info"><span>味わう · {selectedMapSpot.local_food}</span><span>出会う · {selectedMapSpot.local_species}</span></div><div className="map-trivia"><span><Icon name="sparkle" size={13} /> 知ってた？</span><p>{selectedMapSpot.local_trivia}</p></div><button type="button" onClick={() => { setActiveCategory("すべて"); setActiveView("feed"); }}>フィードでもう一度見る <Icon name="arrow" size={14} /></button><button className={visitedIds.includes(selectedMapSpot.id) ? "visited-toggle is-visited" : "visited-toggle"} onClick={() => toggleVisitedSpot(selectedMapSpot)} type="button" aria-pressed={visitedIds.includes(selectedMapSpot.id)}>{visitedIds.includes(selectedMapSpot.id) ? "行った場所に記録済み ✓" : "ここに行ったことがある"}</button></div></article>}
                   </>
                 )}
@@ -357,15 +551,23 @@ function App() {
           </section>
         ) : activeView === "route" ? (
           <RoutePlanner
-            savedSpots={routeSpots}
+            savedSpots={savedSpots}
+            selectedSpotIds={routeSpotIds ?? savedIds}
             areaName={routeAreaName}
             event={routeEvent}
             routePlan={routePlan}
             loading={routeLoading}
             error={routeError}
-            onGenerate={() => void generateRoute()}
+            sharing={routeShareLoading}
+            shareMessage={routeShareMessage}
+            shareError={routeShareError}
+            onSelectionChange={updateRouteSelection}
+            onGenerate={(spotIds) => void generateRoute(spotIds, routeAreaName, routeEvent)}
+            onShare={(title) => void shareCurrentRoute(title)}
             onBrowseFeed={() => setActiveView("feed")}
           />
+        ) : activeView === "discover" ? (
+          <ModelCourseDiscover courses={modelCourses} spots={spots} savedIds={savedIds} onSaveSpot={saveModelCourseSpot} />
         ) : activeView === "events" ? (
           <EventCalendar
             events={events}
@@ -385,6 +587,7 @@ function App() {
         <button className={activeView === "feed" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setActiveView("feed")} type="button"><Icon name="compass" size={21} /><span>見つける</span></button>
         <button className={activeView === "map" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setActiveView("map")} type="button"><span className="mobile-map-icon"><Icon name="map" size={21} />{savedSpots.length > 0 && <i />}</span><span>マイマップ</span></button>
         <button className={activeView === "route" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={openAllSavedRoute} type="button"><Icon name="route" size={21} /><span>旅行プラン</span></button>
+        <button className={activeView === "discover" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setActiveView("discover")} type="button"><Icon name="compass" size={21} /><span>モデルコース</span></button>
         <button className={activeView === "events" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setActiveView("events")} type="button"><Icon name="sparkle" size={21} /><span>季節の行事</span></button>
         <button className={activeView === "memories" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setActiveView("memories")} type="button"><Icon name="bookmark" size={21} /><span>思い出</span></button>
       </nav>
