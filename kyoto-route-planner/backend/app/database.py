@@ -118,6 +118,14 @@ CREATE TABLE IF NOT EXISTS place_embeddings (
     content_hash TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) STRICT;
+
+CREATE TABLE IF NOT EXISTS osm_places_cache (
+    cache_key TEXT PRIMARY KEY,
+    fetched_at TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    rate_limited INTEGER NOT NULL DEFAULT 0,
+    retry_after TEXT
+) STRICT;
 """
 
 
@@ -139,6 +147,18 @@ def initialize_database(path: Path | None = None) -> Path:
         if "region" not in place_columns:
             connection.execute(
                 "ALTER TABLE places ADD COLUMN region TEXT NOT NULL DEFAULT ''"
+            )
+        cache_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(osm_places_cache)")
+        }
+        if "rate_limited" not in cache_columns:
+            connection.execute(
+                "ALTER TABLE osm_places_cache ADD COLUMN "
+                "rate_limited INTEGER NOT NULL DEFAULT 0"
+            )
+        if "retry_after" not in cache_columns:
+            connection.execute(
+                "ALTER TABLE osm_places_cache ADD COLUMN retry_after TEXT"
             )
         connection.commit()
     return target

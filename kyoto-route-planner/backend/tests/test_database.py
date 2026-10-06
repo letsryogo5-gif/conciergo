@@ -8,6 +8,34 @@ from app.database import initialize_database
 
 
 class DatabaseSchemaTests(unittest.TestCase):
+    def test_osm_cache_migrates_legacy_quota_columns(self):
+        with tempfile.TemporaryDirectory() as temp_directory:
+            database = Path(temp_directory) / "places.sqlite3"
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute(
+                    """
+                    CREATE TABLE osm_places_cache (
+                        cache_key TEXT PRIMARY KEY,
+                        fetched_at TEXT NOT NULL,
+                        payload_json TEXT NOT NULL,
+                        free_requests_remaining INTEGER,
+                        quota_resets_at TEXT
+                    )
+                    """
+                )
+                connection.commit()
+
+            initialize_database(database)
+
+            with closing(sqlite3.connect(database)) as connection:
+                columns = {
+                    row[1]
+                    for row in connection.execute("PRAGMA table_info(osm_places_cache)")
+                }
+
+            self.assertIn("rate_limited", columns)
+            self.assertIn("retry_after", columns)
+
     def test_schema_initializes_repeatably_and_supports_hybrid_search_records(self):
         with tempfile.TemporaryDirectory() as temp_directory:
             database = Path(temp_directory) / "places.sqlite3"

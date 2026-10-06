@@ -86,7 +86,7 @@ class ItineraryPlanningTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with (
-            patch("app.itinerary.search_places", return_value=search_response),
+            patch("app.itinerary.search_osm_places", new=AsyncMock(return_value=search_response)),
             patch("app.itinerary.search_route", route_search),
         ):
             result = await plan_itinerary(request)
@@ -115,7 +115,7 @@ class ItineraryPlanningTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with (
-            patch("app.itinerary.search_places", return_value=search_response),
+            patch("app.itinerary.search_osm_places", new=AsyncMock(return_value=search_response)),
             patch(
                 "app.itinerary.search_route",
                 new=AsyncMock(return_value=([], 60, "16:00", "17:00")),

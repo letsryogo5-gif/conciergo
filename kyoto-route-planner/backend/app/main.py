@@ -7,6 +7,11 @@ from fastapi.staticfiles import StaticFiles
 from app.database import initialize_database
 from app.ekispert import search_route
 from app.itinerary import plan_itinerary
+from app.overpass import (
+    get_osm_status,
+    list_osm_places,
+    search_osm_places,
+)
 from app.models import (
     ItineraryRequest,
     ItinerarySuggestion,
@@ -15,8 +20,7 @@ from app.models import (
     RouteSuggestion,
     RouteSuggestionRequest,
 )
-from app.places import choose_places, list_origins, list_places
-from app.search import search_places
+from app.places import choose_places, list_origins
 
 
 @asynccontextmanager
@@ -34,8 +38,12 @@ def health() -> dict[str, str]:
 
 
 @app.get("/api/places")
-def places():
-    return list_places()
+async def places():
+    return [
+        place
+        for place in await list_osm_places()
+        if place.themes
+    ][:60]
 
 
 @app.get("/api/origins")
@@ -43,9 +51,14 @@ def origins():
     return list_origins()
 
 
+@app.get("/api/places/status")
+def places_status():
+    return get_osm_status()
+
+
 @app.post("/api/search/places", response_model=PlaceSearchResponse)
-def search_place_catalog(request: PlaceSearchRequest) -> PlaceSearchResponse:
-    return search_places(request.query)
+async def search_place_catalog(request: PlaceSearchRequest) -> PlaceSearchResponse:
+    return await search_osm_places(request.query)
 
 
 @app.post("/api/itineraries", response_model=ItinerarySuggestion)
@@ -57,7 +70,13 @@ async def recommend_itinerary(request: ItineraryRequest) -> ItinerarySuggestion:
 async def recommend_route(request: RouteSuggestionRequest) -> RouteSuggestion:
     try:
         origin = next(item for item in list_origins() if item.name == request.origin)
-        selected = choose_places(request.theme, request.stop_count, request.origin)
+        candidates = await list_osm_places()
+        selected = choose_places(
+            request.theme,
+            request.stop_count,
+            request.origin,
+            candidates,
+        )
     except (StopIteration, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error) or "出発駅を選び直してください。") from error
 

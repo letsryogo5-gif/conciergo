@@ -55,6 +55,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [placeSourceWarning, setPlaceSourceWarning] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -63,18 +64,26 @@ function App() {
           fetch("/api/places"),
           fetch("/api/origins"),
         ]);
-        if (!placesResponse.ok || !originsResponse.ok) {
+        if (!placesResponse.ok) {
+          throw new Error(await readError(placesResponse));
+        }
+        if (!originsResponse.ok) {
           throw new Error("アプリの候補地を読み込めませんでした。APIサーバーを確認してください。");
         }
         const [placeData, originData] = await Promise.all([
           placesResponse.json() as Promise<Place[]>,
           originsResponse.json() as Promise<Origin[]>,
         ]);
+        const statusResponse = await fetch("/api/places/status");
+        const placeSourceStatus = statusResponse.ok
+          ? await statusResponse.json() as { warning: string | null }
+          : { warning: null };
         if (!placeData.length || !originData.length) {
           throw new Error("候補地または出発駅のデータがありません。");
         }
         setPlaces(placeData);
         setOrigins(originData);
+        setPlaceSourceWarning(placeSourceStatus.warning);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "初期データを読み込めませんでした。");
       } finally {
@@ -204,6 +213,7 @@ function App() {
           </form>
 
           {error && <div className="error-panel" role="alert"><strong>ルートを表示できません</strong><span>{error}</span></div>}
+          {placeSourceWarning && <div className="error-panel" role="status"><strong>検索サーバーの負荷を抑えています</strong><span>{placeSourceWarning}</span></div>}
           {loading && <p className="status-message">候補地を読み込んでいます…</p>}
         </section>
 
@@ -237,7 +247,7 @@ function App() {
               {suggestion.places.map((place, index) => (
                 <div className="suggested-place" key={place.id}>
                   <span className="place-number">{String(index + 1).padStart(2, "0")}</span>
-                  <div><small>{place.category} · 最寄り {place.access_point}</small><strong>{place.name}</strong><p>{place.description}</p></div>
+                  <div><small>{place.category} · 座標から公共交通を検索</small><strong>{place.name}</strong><p>{place.description || "OpenStreetMapのPOI"}</p></div>
                 </div>
               ))}
               <div className="route-endpoint"><span className="endpoint-dot finish" /><div><small>FINISH</small><strong>{suggestion.origin.name}駅</strong></div></div>
@@ -263,7 +273,8 @@ function App() {
       </section>
 
       <footer className="footer">
-        <p>経路・運行情報：駅すぱあとAPI　·　地図：© OpenStreetMap contributors / OpenFreeMap</p>
+        <p>POI：Overpass API / © OpenStreetMap contributors　·　地図：MapLibre / OpenFreeMap</p>
+        <p>POI検索結果は24時間キャッシュします。公開検索サーバーの利用制限時は、連続アクセスを避けて一時停止します。</p>
         <p>スポットの順番は近接性による候補です。実際の徒歩道順・営業状況は各施設の公式情報をご確認ください。</p>
       </footer>
     </main>

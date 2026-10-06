@@ -11,8 +11,8 @@ from app.models import (
     ItinerarySuggestion,
     RouteLeg,
 )
+from app.overpass import search_osm_places
 from app.places import list_origins
-from app.search import search_places
 
 
 @dataclass(frozen=True)
@@ -39,7 +39,7 @@ async def plan_itinerary(request: ItineraryRequest) -> ItinerarySuggestion:
             detail="出発時刻は帰着期限より前に設定してください。",
         )
 
-    search_result = search_places(request.query, limit=20)
+    search_result = await search_osm_places(request.query, limit=20)
     if not search_result.results:
         detail = (
             " ".join(search_result.query.warnings)
@@ -160,7 +160,7 @@ async def plan_itinerary(request: ItineraryRequest) -> ItinerarySuggestion:
         feasible=feasible,
         route_search_calls=route_search_calls,
         note=(
-            "候補はSQLiteのキーワード・ルールラベル・距離検索で選び、"
+            "候補はOpenStreetMapのPOIタグ・キーワード・距離検索で選び、"
             "候補順列ごとに駅すぱあとAPIの公共交通所要時間を比較しました。"
             "立ち寄り先あたりの滞在時間は一律90分の仮定です。"
             "営業時間、乗車遅延、施設間の徒歩道順は考慮しません。"

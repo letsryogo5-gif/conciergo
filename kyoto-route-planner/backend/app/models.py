@@ -16,6 +16,8 @@ class Place(BaseModel):
     latitude: float
     longitude: float
     themes: list[Theme]
+    address: str = ""
+    tags: dict[str, str] = Field(default_factory=dict)
 
 
 class Origin(BaseModel):
