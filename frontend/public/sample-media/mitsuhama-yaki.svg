@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600">
+  <defs><linearGradient id="food" x2="0" y2="1"><stop stop-color="#ecc49c"/><stop offset=".45" stop-color="#bd7955"/><stop offset="1" stop-color="#593c35"/></linearGradient><radialGradient id="plate"><stop stop-color="#f2dcb7"/><stop offset=".84" stop-color="#e6c99b"/><stop offset=".86" stop-color="#8c5941"/><stop offset="1" stop-color="#4f3931"/></radialGradient></defs>
+  <rect width="1200" height="1600" fill="url(#food)"/>
+  <path d="M0 1124h1200v476H0Z" fill="#513a34"/>
+  <ellipse cx="598" cy="1010" rx="470" ry="425" fill="#241e1a" opacity=".35"/>
+  <ellipse cx="598" cy="940" rx="448" ry="391" fill="url(#plate)"/>
+  <ellipse cx="598" cy="925" rx="330" ry="279" fill="#c17d4b"/>
+  <path d="M329 907c71-123 174-139 269-102 97 39 150 19 254-47 65 88 59 223-12 312-111 139-397 144-498 18-43-54-49-120-13-181Z" fill="#d79b5d"/>
+  <g fill="none" stroke-linecap="round"><path d="M353 901c111-79 203 67 322-12 69-46 105-93 182-75M375 1002c107-91 185 67 314-5 63-35 93-86 156-85M422 815c70 28 110 105 206 76 49-15 90-55 140-64" stroke="#f0d09a" stroke-width="24"/><path d="M458 893c10-49 65-69 108-31 40 36 27 84-15 99-45 16-102-18-93-68Zm186 119c10-42 61-57 94-24 30 30 17 70-21 82-38 13-81-18-73-58Z" fill="#493e2d" stroke="#e2b86f" stroke-width="12"/></g>
+  <g fill="#4f7545"><path d="m389 777 63-75 84 95-54 48Zm274 25 52-97 95 71-60 69Z"/></g>
+  <g fill="#f0e7cf"><circle cx="471" cy="861" r="14"/><circle cx="728" cy="965" r="13"/></g>
+</svg>

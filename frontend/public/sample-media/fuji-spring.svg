@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600">
+  <defs><linearGradient id="spring" x2="0" y2="1"><stop stop-color="#f1c8b2"/><stop offset=".52" stop-color="#c8d7cc"/><stop offset="1" stop-color="#648872"/></linearGradient></defs>
+  <rect width="1200" height="1600" fill="url(#spring)"/>
+  <circle cx="918" cy="320" r="133" fill="#f9e9c9" opacity=".7"/>
+  <path d="m192 1042 439-678 426 678Z" fill="#5b6f70"/>
+  <path d="m522 529 109-165 102 162-74-24-37 33-39-34Z" fill="#f4efe0"/>
+  <path d="m192 1042 192-294 99 154 101-167 105 159 101-171 267 319Z" fill="#718b7d"/>
+  <path d="M0 1043h1200v557H0Z" fill="#637f59"/>
+  <path d="M0 1115c244-106 412-56 584 17 189 80 366 13 616-67v535H0Z" fill="#8ca66b"/>
+  <g fill="#d98d9f"><circle cx="130" cy="1240" r="58"/><circle cx="259" cy="1360" r="48"/><circle cx="439" cy="1193" r="62"/><circle cx="580" cy="1425" r="56"/><circle cx="754" cy="1274" r="65"/><circle cx="967" cy="1396" r="55"/><circle cx="1098" cy="1199" r="48"/></g>
+  <g fill="#f2d4d0" opacity=".85"><circle cx="109" cy="1222" r="23"/><circle cx="447" cy="1171" r="25"/><circle cx="748" cy="1247" r="26"/><circle cx="1088" cy="1184" r="19"/></g>
+</svg>

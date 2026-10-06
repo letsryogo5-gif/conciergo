@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600">
+  <defs><linearGradient id="dawn" x2="0" y2="1"><stop stop-color="#e2bca1"/><stop offset=".4" stop-color="#8eaaa7"/><stop offset="1" stop-color="#365b61"/></linearGradient><linearGradient id="lake" x2="0" y2="1"><stop stop-color="#779da0"/><stop offset="1" stop-color="#263f48"/></linearGradient></defs>
+  <rect width="1200" height="1600" fill="url(#dawn)"/>
+  <circle cx="830" cy="360" r="150" fill="#f7e2bd" opacity=".65"/>
+  <path d="m0 900 196-243 155 177 206-427 184 356 176-229 283 349v416H0Z" fill="#526b66"/>
+  <path d="m0 999 236-211 155 139 167-279 168 230 191-203 283 284v332H0Z" fill="#314e4b"/>
+  <path d="M0 1033c221-79 428-57 603 5s370 61 597-10v572H0Z" fill="url(#lake)"/>
+  <path d="M0 1170c211-42 380 48 583 19 214-31 411-78 617-13v105c-222-32-405 20-620 43-205 21-371-55-580-7Z" fill="#b6cbc1" opacity=".52"/>
+  <path d="M0 1450c220-58 360 10 563 0 221-12 415-84 637-19v169H0Z" fill="#1c3943"/>
+  <g fill="#193b35"><path d="M100 1060 150 813l55 247Zm130 28 40-203 48 203Zm748-6 54-264 49 264Zm104 3 34-174 43 174Z"/></g>
+</svg>

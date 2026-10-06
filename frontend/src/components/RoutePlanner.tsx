@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { LocalEvent, RoutePlan, Spot } from "../types";
 import { Icon } from "./Icon";
+import { RouteOverviewMap } from "./RouteOverviewMap";
 
 type RoutePlannerProps = {
   savedSpots: Spot[];
@@ -79,7 +80,7 @@ export function RoutePlanner({
         <div><p className="eyebrow"><Icon name="route" size={14} /> YOUR MADE-TO-ORDER JOURNEY</p><h1>{event ? `${event.name}に合わせて、` : areaName ? `${areaName}のピンをつないで、` : "「行きたい」をつないで、"}<br /><em>旅のかたちに。</em></h1><p className="intro-description">{event ? `${event.best_time}ごろの開催に合わせ、近くの世界遺産や豆知識スポットも組み合わせます。` : areaName ? `${areaName}エリアのスポットだけで、巡る順番と1日の予定を組み立てます。` : "マイマップのスポットから、巡る順番と1日の予定を組み立てます。"}</p></div>
         <span className="route-intro-stamp"><Icon name="sparkle" size={26} /><small>MADE FOR YOU</small></span>
       </div>
-      <div className="route-sample-note" role="note"><strong>サンプルのルート提案</strong><span>座標から近隣の場所を同じ日にまとめる簡易計算です。実際の道路・鉄道・フェリーの経路や時刻ではありません。</span></div>
+      <div className="route-sample-note" role="note"><strong>OSRMの車ルートを利用します</strong><span>選択スポットの組み合わせと滞在時間はサンプルです。道路の距離・移動時間はOSRMのOpenStreetMap道路データを使った目安で、交通状況や公共交通は含みません。</span></div>
       {savedSpots.length === 0 ? (
         <div className="route-empty">
           <span className="route-empty-icon"><Icon name="map" size={26} /></span>
@@ -172,8 +173,9 @@ export function RoutePlanner({
                 <span><strong>{routePlan.days.length}</strong>日間の旅</span>
                 <span><strong>{routePlan.total_spots}</strong>スポット</span>
                 <span><strong>{formatMinutes(routePlan.total_estimated_travel_minutes)}</strong>同日内の移動目安</span>
-                <span className="route-summary-tag">SAMPLE ROUTE</span>
+                <span className="route-summary-tag">OSRM ROAD ROUTE</span>
               </div>
+              <RouteOverviewMap days={routePlan.days} />
               <div className="route-days">
                 {routePlan.days.map((day) => (
                   <article className="route-day-card" key={day.day_number}>
@@ -181,7 +183,7 @@ export function RoutePlanner({
                     <ol className="route-timeline">
                       {day.stops.map((stop, stopIndex) => (
                         <li className="route-timeline-item" key={stop.spot.id}>
-                          {stopIndex > 0 && <div className="route-transfer"><span className="transfer-line" /><span><Icon name="route" size={13} /> 移動目安 {stop.travel_minutes_from_previous}分 · 約{stop.distance_km_from_previous}km（直線距離）</span></div>}
+                          {stopIndex > 0 && <div className="route-transfer"><span className="transfer-line" /><span><Icon name="route" size={13} /> 車移動の目安 {stop.travel_minutes_from_previous}分 · 道路距離 約{stop.distance_km_from_previous}km</span></div>}
                           <div className="route-stop-row"><span className="route-stop-time">{stop.arrival_time}<small>{stop.departure_time}</small></span><span className="route-stop-marker"><Icon name="pin" size={15} /></span><img src={stop.spot.image_url} alt="" /><div className="route-stop-copy"><span>{stop.spot.prefecture} · {stop.spot.category}</span><h3>{stop.spot.region.split(",")[0]}</h3><p>{stop.spot.title}</p><small>滞在目安 {stop.visit_minutes}分 · {stop.spot.local_food}も味わって</small></div></div>
                         </li>
                       ))}

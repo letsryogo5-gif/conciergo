@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600">
+  <defs><linearGradient id="winter" x2="0" y2="1"><stop stop-color="#d2d8d1"/><stop offset=".48" stop-color="#8fa9b1"/><stop offset="1" stop-color="#355c70"/></linearGradient><linearGradient id="sea" x2="0" y2="1"><stop stop-color="#49798a"/><stop offset="1" stop-color="#142e44"/></linearGradient></defs>
+  <rect width="1200" height="1600" fill="url(#winter)"/>
+  <circle cx="890" cy="330" r="132" fill="#f4e5c7" opacity=".74"/>
+  <path d="M0 720 160 565l130 65 170-230 178 241 170-176 190 175 202-125v515H0Z" fill="#637e83"/>
+  <path d="m0 795 208-111 143 38 182-174 185 190 135-77 196 119 151-56v440H0Z" fill="#d3ded6"/>
+  <rect y="875" width="1200" height="725" fill="url(#sea)"/>
+  <path d="M-40 967 140 912l95 25 126-52 176 62 144-40 150 71 141-31 155 44-8 119-173 24-108-37-152 57-183-67-130 40-119-46-155 25Z" fill="#e5eee4"/>
+  <path d="m60 1194 192-69 111 20 114-47 167 73 110-36 156 46 177-33 143 64-34 126-155-42-115 47-182-51-145 60-148-55-159 35-135-65Z" fill="#c6d9d9"/>
+  <path d="M0 1450c250-62 403-24 586 30 228 68 411 45 614-22v142H0Z" fill="#162e44"/>
+  <g fill="#f4f4e8" opacity=".82"><path d="m180 1072 75-23 44 29-20 28-84 8Z"/><path d="m735 1343 76-30 58 35-19 33-92 1Z"/><path d="m970 1055 79-15 38 31-23 25-81 4Z"/></g>
+</svg>

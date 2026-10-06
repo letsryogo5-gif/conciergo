@@ -33,13 +33,26 @@ function ModelCourseCard({ course, spots, savedIds, onSaveSpot }: ModelCourseCar
         <ol className="model-course-timeline" aria-label={`${course.title}の訪問順路`}>
           {courseSpots.map((spot, index) => (
             <li key={course.spot_ids[index]}>
-              <span className="model-course-stop-number">{String(index + 1).padStart(2, "0")}</span>
+              <span className="model-course-stop-number" aria-label={`第${index + 1}スポット`}>
+                {String(index + 1).padStart(2, "0")}
+              </span>
               {spot ? (
                 <>
-                  <img src={spot.image_url} alt="" />
-                  <span className="model-course-stop-copy"><strong>{spot.region.split(",")[0]}</strong><small>{spot.prefecture} · {spot.local_food}</small></span>
+                  <img src={spot.image_url} alt={`${spot.prefecture}のサンプル風景`} loading="lazy" />
+                  <div className="model-course-stop-copy">
+                    <span className="model-course-stop-meta">{spot.prefecture} · {spot.category}</span>
+                    <strong>{spot.title}</strong>
+                    <p>{spot.description}</p>
+                    <span className="model-course-stop-local">
+                      <span><b>味わう</b>{spot.local_food}</span>
+                      <span><b>出会う</b>{spot.local_species}</span>
+                    </span>
+                    {spot.is_world_heritage && (
+                      <span className="model-course-stop-heritage">✦ 世界遺産 · {spot.heritage_name}</span>
+                    )}
+                  </div>
                   <button
-                    aria-label={`${spot.region.split(",")[0]}を行きたいリストに${savedIds.includes(spot.id) ? "追加済み" : "追加"}`}
+                    aria-label={`${spot.title}を行きたいリストに${savedIds.includes(spot.id) ? "追加済み" : "追加"}`}
                     className={savedIds.includes(spot.id) ? "model-course-save-stop is-saved" : "model-course-save-stop"}
                     disabled={savedIds.includes(spot.id)}
                     onClick={() => onSaveSpot(spot)}

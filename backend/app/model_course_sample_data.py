@@ -7,7 +7,7 @@ SAMPLE_MODEL_COURSES = [
         description="朝は香川でコシのあるさぬきうどん、午後は今治でタオルのものづくりに触れ、夕暮れは松山・三津浜で地元のソウルフードを。瀬戸内の食と手仕事をたどるサンプルコースです。",
         region="香川・愛媛",
         creator="瀬戸内よりみち旅",
-        image_url="https://images.unsplash.com/photo-1555126634-323283e090fa?auto=format&fit=crop&w=1200&q=85",
+        image_url="/sample-media/sanuki-udon.svg",
         spot_ids=[
             "kagawa-sanuki-udon",
             "imabari-towel-museum",

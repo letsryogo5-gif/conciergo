@@ -30,7 +30,7 @@ SAMPLE_MEMORIES = [
         photos=[
             MemoryPhoto(
                 id="kyoto-memory-river",
-                image_url="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=700&q=80",
+                image_url="/sample-media/kyoto-river.svg",
                 caption="水面に夕焼けが映った、旅のはじまり",
                 captured_at="2025-11-18T16:42:00+09:00",
                 latitude=35.0118,
@@ -39,7 +39,7 @@ SAMPLE_MEMORIES = [
             ),
             MemoryPhoto(
                 id="kyoto-memory-deer",
-                image_url="https://images.unsplash.com/photo-1484406566174-9da000fda645?auto=format&fit=crop&w=700&q=80",
+                image_url="/sample-media/nara-grove.svg",
                 caption="木立の向こうで、鹿と目が合った",
                 captured_at="2025-11-18T18:16:00+09:00",
                 latitude=34.6854,
@@ -48,7 +48,7 @@ SAMPLE_MEMORIES = [
             ),
             MemoryPhoto(
                 id="kyoto-memory-lantern",
-                image_url="https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=700&q=80",
+                image_url="/sample-media/ine-bay.svg",
                 caption="帰り道に見つけた、静かな灯り",
                 captured_at="2025-11-18T19:03:00+09:00",
                 latitude=35.6738,
@@ -74,7 +74,7 @@ SAMPLE_MEMORIES = [
         photos=[
             MemoryPhoto(
                 id="yakushima-memory-moss",
-                image_url="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=700&q=80",
+                image_url="/sample-media/moss-forest.svg",
                 caption="雨のあと、森の緑がいちばん深くなる",
                 captured_at="2024-06-09T09:27:00+09:00",
                 latitude=30.359,
@@ -83,7 +83,7 @@ SAMPLE_MEMORIES = [
             ),
             MemoryPhoto(
                 id="yakushima-memory-path",
-                image_url="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=700&q=80",
+                image_url="/sample-media/moss-forest.svg",
                 caption="足音まで吸い込まれる、苔むした小径",
                 captured_at="2024-06-09T10:51:00+09:00",
                 latitude=30.356,

@@ -1,5 +1,6 @@
 import type { Spot } from "../types";
 import { Icon } from "./Icon";
+import { WikipediaSpotSummary } from "./WikipediaSpotSummary";
 
 type HeritageFeaturesProps = {
   spots: Spot[];
@@ -24,7 +25,7 @@ export function HeritageFeatures({ spots, savedIds, visitedIds, onToggleSave, on
           return (
             <article className="heritage-card" key={spot.id}>
               <button className="heritage-card-image" onClick={() => onOpenMap(spot)} type="button" aria-label={`${spot.heritage_name}をマイマップで見る`}><img src={spot.image_url} alt={`${spot.region}のサンプル風景`} loading="lazy" /><span className="heritage-crown">✦ WORLD HERITAGE</span><span className="heritage-card-region"><Icon name="pin" size={12} />{spot.prefecture}</span></button>
-              <div className="heritage-card-copy"><span className="heritage-overline">日本の世界遺産</span><h3>{spot.heritage_name}</h3><p>{spot.local_trivia}</p><div className="heritage-card-actions"><button className={isSaved ? "heritage-save saved" : "heritage-save"} onClick={() => onToggleSave(spot)} type="button" aria-pressed={isSaved}><Icon name="heart" size={14} />{isSaved ? "保存中" : "行きたい"}</button><button className={isVisited ? "visited-toggle is-visited" : "visited-toggle"} onClick={() => onToggleVisited(spot)} type="button" aria-pressed={isVisited}>{isVisited ? "行った ✓" : "行った"}</button></div></div>
+              <div className="heritage-card-copy"><span className="heritage-overline">日本の世界遺産</span><h3>{spot.heritage_name}</h3><p>{spot.local_trivia}</p><WikipediaSpotSummary spot={spot} label="世界遺産の概要と価値を知る" /><div className="heritage-card-actions"><button className={isSaved ? "heritage-save saved" : "heritage-save"} onClick={() => onToggleSave(spot)} type="button" aria-pressed={isSaved}><Icon name="heart" size={14} />{isSaved ? "保存中" : "行きたい"}</button><button className={isVisited ? "visited-toggle is-visited" : "visited-toggle"} onClick={() => onToggleVisited(spot)} type="button" aria-pressed={isVisited}>{isVisited ? "行った ✓" : "行った"}</button></div></div>
             </article>
           );
         })}

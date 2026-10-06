@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600">
+  <defs><linearGradient id="gorge" x2="0" y2="1"><stop stop-color="#abc7bf"/><stop offset=".48" stop-color="#547c6b"/><stop offset="1" stop-color="#173e36"/></linearGradient><linearGradient id="water" x2="0" y2="1"><stop stop-color="#98c4b9"/><stop offset="1" stop-color="#246477"/></linearGradient></defs>
+  <rect width="1200" height="1600" fill="url(#gorge)"/>
+  <path d="M0 0h360l-54 394 119 202-123 245 66 263-165 496H0Zm1200 0H864l57 344-117 255 126 218-84 259 174 524h180Z" fill="#253f34"/>
+  <path d="m360 0 113 184-42 234 126 145-83 229 104 246-90 224 120 338H320l62-367-117-220 94-237-89-242 115-270-68-264Z" fill="#79927a"/>
+  <path d="M600 0c-7 135 15 238-15 347-29 108 31 199-8 300-39 99 29 194-9 293-39 100 21 204-16 305-31 87 2 192 5 355h104c-8-156 17-244-1-356-17-106 27-203 2-306-24-99 28-194 4-294-23-96 25-192 0-288-24-94-11-207-3-356Z" fill="#e4eee0"/>
+  <path d="M0 1176c210-55 356-10 511 43 172 58 318 53 689-39v420H0Z" fill="url(#water)"/>
+  <path d="M0 1315c222-40 383 33 562 46 194 14 405-36 638-68v80c-245 50-434 85-653 63-196-20-344-90-547-41Z" fill="#d5e5d7" opacity=".48"/>
+  <path d="M894 1151c-15 89-51 123-112 159 75-6 137-41 172-100Z" fill="#f4f1d7"/>
+</svg>

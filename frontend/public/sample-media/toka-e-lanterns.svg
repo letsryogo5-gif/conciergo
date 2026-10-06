@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600">
+  <defs><linearGradient id="summer-night" x2="0" y2="1"><stop stop-color="#263b4a"/><stop offset=".53" stop-color="#555765"/><stop offset="1" stop-color="#d18566"/></linearGradient></defs>
+  <rect width="1200" height="1600" fill="url(#summer-night)"/>
+  <path d="M0 1010h1200v590H0Z" fill="#25343a"/>
+  <path d="M0 1290c193-78 383-46 586 24 204 70 388 18 614-46v332H0Z" fill="#45373a"/>
+  <g fill="#f6c57f"><circle cx="163" cy="1127" r="39"/><circle cx="300" cy="1245" r="25"/><circle cx="493" cy="1094" r="32"/><circle cx="645" cy="1278" r="42"/><circle cx="845" cy="1137" r="27"/><circle cx="1033" cy="1247" r="38"/></g>
+  <g fill="#f6c57f" opacity=".27"><circle cx="163" cy="1127" r="90"/><circle cx="493" cy="1094" r="79"/><circle cx="645" cy="1278" r="93"/><circle cx="1033" cy="1247" r="88"/></g>
+  <g fill="#263d35"><path d="M67 1078V687h49v391Zm989 9V594h62v493Z"/></g>
+  <path d="M0 1450c264-53 441 40 610 44 193 4 389-76 590-47v153H0Z" fill="#1f3035"/>
+</svg>

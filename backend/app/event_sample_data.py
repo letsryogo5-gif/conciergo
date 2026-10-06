@@ -1,4 +1,4 @@
-from app.models import LocalEvent
+from app.models import LocalEvent, SourceReference
 
 SAMPLE_EVENTS = [
     LocalEvent(
@@ -7,7 +7,7 @@ SAMPLE_EVENTS = [
         name="富士芝桜まつり",
         region="富士五湖・山梨",
         description="富士山を背景に、春色の芝桜が一面に広がる花の季節。",
-        image_url="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1000&q=80",
+        image_url="/sample-media/fuji-spring.svg",
         start_month=4,
         end_month=5,
         best_time="4月中旬〜5月下旬",
@@ -18,12 +18,21 @@ SAMPLE_EVENTS = [
         spot_id="kyoto-kamogawa",
         name="祇園祭",
         region="京都市・京都",
-        description="山鉾が都をめぐる、京都の夏を彩る祭礼。",
-        image_url="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1000&q=80",
+        description="7月に行われる京都の祭礼。京都観光公式案内では神幸祭を7月17日、還幸祭を7月24日と案内しています。",
+        image_url="/sample-media/gion-lanterns.svg",
         start_month=7,
         end_month=7,
         best_time="7月",
         category="夏祭り",
+        data_status="sourced",
+        sources=[
+            SourceReference(
+                publisher="Kyoto Travel",
+                title="Gion Matsuri Festival",
+                url="https://kyoto.travel/en/travel-inspiration/gion-matsuri-festival/",
+                verified_fields=["description", "start_month", "end_month", "best_time"],
+            )
+        ],
     ),
     LocalEvent(
         id="nara-toka-e",
@@ -31,7 +40,7 @@ SAMPLE_EVENTS = [
         name="なら燈花会",
         region="奈良公園・奈良",
         description="夏の夜、奈良公園一帯にろうそくの灯りがともる催し。",
-        image_url="https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1000&q=80",
+        image_url="/sample-media/toka-e-lanterns.svg",
         start_month=8,
         end_month=8,
         best_time="8月上旬〜中旬",
@@ -43,7 +52,7 @@ SAMPLE_EVENTS = [
         name="知床流氷シーズン",
         region="知床・北海道",
         description="オホーツク海を白く染める流氷と、冬の野生動物に出会う季節。",
-        image_url="https://images.unsplash.com/photo-1517299321609-52687d1bc55a?auto=format&fit=crop&w=1000&q=80",
+        image_url="/sample-media/drift-ice.svg",
         start_month=2,
         end_month=3,
         best_time="2月〜3月",

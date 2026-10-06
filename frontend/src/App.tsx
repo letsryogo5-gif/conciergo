@@ -9,6 +9,10 @@ import { EventCalendar } from "./components/EventCalendar";
 import { HeritageFeatures } from "./components/HeritageFeatures";
 import { MemoryJournal } from "./components/MemoryJournal";
 import { ModelCourseDiscover } from "./components/ModelCourseDiscover";
+import { SpotDiscoveryShelf } from "./components/SpotDiscoveryShelf";
+import { WikipediaSpotSummary } from "./components/WikipediaSpotSummary";
+import { SpotMediaImage } from "./components/SpotMediaImage";
+import { AttributionCredits, DataStatusBadge, FeatureStatusBadge, OPENSTREETMAP_CREDIT, SourceAttributions } from "./components/AttributionCredits";
 import type { RegionalRecommendation } from "./components/RegionalRecommendations";
 import { getRegionalSpotGroups, REGION_PIN_THRESHOLD } from "./regions";
 
@@ -248,13 +252,14 @@ function App() {
     }
   }
 
-  function saveModelCourseSpot(spot: Spot) {
-    if (!spots.some((availableSpot) => availableSpot.id === spot.id)) {
-      setStorageError(`スポット情報を読み込めません: ${spot.id}`);
+  function saveModelCourseSpots(spotsToSave: Spot[]) {
+    const unknownSpot = spotsToSave.find((spot) => !spots.some((availableSpot) => availableSpot.id === spot.id));
+    if (unknownSpot) {
+      setStorageError(`スポット情報を読み込めません: ${unknownSpot.id}`);
       return;
     }
 
-    const nextIds = [...new Set([...savedIds, spot.id])];
+    const nextIds = [...new Set([...savedIds, ...spotsToSave.map((spot) => spot.id)])];
     try {
       window.localStorage.setItem(favoritesStorageKey, JSON.stringify(nextIds));
       setSavedIds(nextIds);
@@ -267,6 +272,10 @@ function App() {
     } catch {
       setStorageError("スポットを保存できませんでした。ブラウザーのストレージ設定を確認してください。");
     }
+  }
+
+  function saveModelCourseSpot(spot: Spot) {
+    saveModelCourseSpots([spot]);
   }
 
   function updateRouteSelection(spotIds: string[]) {
@@ -397,7 +406,7 @@ function App() {
           <span className="sample-pill"><span />SAMPLE MODE</span>
         </header>
 
-        <div className="sample-banner" role="note"><span className="banner-sparkle">✳</span><p><strong>※現在サンプルモードで動作中です</strong><span>　表示内容はデモ用データです。地図・SNSサービスには接続していません。</span></p></div>
+        <div className="sample-banner" role="note"><p><strong>サンプルモード</strong><span>サンプルデータ · 写真は提供元を表示</span></p></div>
 
         {storageError && <p className="storage-error" role="alert">{storageError}</p>}
         {activeView === "feed" && <TriviaToast spots={spots} savedIds={savedIds} visitedIds={visitedIds} onToggleSave={toggleSavedSpot} onToggleVisited={toggleVisitedSpot} />}
@@ -407,25 +416,25 @@ function App() {
             <section className="feed-column" aria-label="地域の魅力を見つけるフィード">
               <div className="page-intro">
                 <div><p className="eyebrow"><Icon name="sparkle" size={14} /> SCROLL INTO SOMEWHERE</p><h1>知らない景色に、<br /><em>恋をしよう。</em></h1><p className="intro-description">ふと心に残った景色が、次の旅のきっかけになる。</p></div>
-                <div className="issue-stamp"><span>旅心をくすぐる</span><strong>小さな<br />きっかけ</strong><span>NO. 001 — JAPAN</span></div>
               </div>
-              <HeritageFeatures
-                spots={spots}
-                savedIds={savedIds}
-                visitedIds={visitedIds}
-                onToggleSave={toggleSavedSpot}
-                onToggleVisited={toggleVisitedSpot}
-                onOpenMap={(spot) => { setSelectedSpotId(spot.id); setSelectedRegionId(null); setActiveView("map"); }}
-              />
+              <details className="feed-discovery-details">
+                <summary>世界遺産・今日のおすすめ <Icon name="arrow" size={14} /></summary>
+                <div className="feed-discovery-content">
+                  <HeritageFeatures
+                    spots={spots}
+                    savedIds={savedIds}
+                    visitedIds={visitedIds}
+                    onToggleSave={toggleSavedSpot}
+                    onToggleVisited={toggleVisitedSpot}
+                    onOpenMap={(spot) => { setSelectedSpotId(spot.id); setSelectedRegionId(null); setActiveView("map"); }}
+                  />
+                  <SpotDiscoveryShelf savedIds={savedIds} onSaveSpot={saveModelCourseSpot} onSaveSpots={saveModelCourseSpots} />
+                  <RegionalRecommendations recommendations={recommendations} compact onCreateRoute={createRegionalRoute} />
+                </div>
+              </details>
               <div className="category-row" aria-label="スポットのカテゴリー">
                 {categories.map((category) => <button key={category} className={`category-chip${activeCategory === category ? " selected" : ""}`} onClick={() => setActiveCategory(category)} type="button">{category}</button>)}
               </div>
-              <button className="feed-model-course-invite" onClick={() => setActiveView("discover")} type="button">
-                <span className="feed-model-course-icon"><Icon name="route" size={17} /></span>
-                <span><small>JOURNEYS SHARED BY TRAVELERS</small><strong>誰かのモデルコースをのぞいてみる</strong></span>
-                <Icon name="arrow" size={16} />
-              </button>
-              <RegionalRecommendations recommendations={recommendations} compact onCreateRoute={createRegionalRoute} />
 
               <div className="feed-list">
                 {visibleSpots.map((spot, index) => {
@@ -433,7 +442,7 @@ function App() {
                   return (
                     <article className="spot-card" key={spot.id}>
                       <div className="media-panel">
-                        {spot.video_url ? <video className="spot-media" autoPlay muted loop playsInline preload="metadata" poster={spot.image_url} aria-label={`${spot.region}のサンプル動画`}><source src={spot.video_url} type="video/mp4" /></video> : <img className="spot-media" src={spot.image_url} alt={`${spot.region}をイメージしたサンプル写真`} loading={index === 0 ? "eager" : "lazy"} />}
+                        <SpotMediaImage spot={spot} loading={index === 0 ? "eager" : "lazy"} />
                         <div className="media-shade" />
                         <div className="media-topline"><span className="creator-avatar">{spot.creator.slice(0, 1)}</span><span>{spot.creator}<small> · JAPAN LOCAL JOURNAL</small></span><span className="media-more">•••</span></div>
                         <div className="media-location"><span className="location-pin"><Icon name="pin" size={14} /></span><span>{spot.region}<small>{spot.prefecture} · JAPAN</small></span></div>
@@ -442,16 +451,20 @@ function App() {
                         <div className="media-index"><span>0{index + 1}</span><span />{String(visibleSpots.length).padStart(2, "0")}</div>
                         <div className="media-actions"><button className={`like-button${isSaved ? " liked" : ""}`} type="button" onClick={() => toggleSavedSpot(spot)} aria-pressed={isSaved} aria-label={isSaved ? `${spot.region}をマイマップから外す` : `${spot.region}をいいねしてマイマップに保存`}><Icon name="heart" size={25} /><span>{isSaved ? "行きたい！" : "行きたい"}</span></button><span className="like-count">{(spot.likes + (isSaved ? 1 : 0)).toLocaleString("ja-JP")}</span><span className="media-action-divider" /><span className="gesture-hint">↓ SCROLL TO WANDER</span></div>
                       </div>
-                      <div className="discovery-panel">
-                        <div className="discovery-heading"><span className="discovery-icon"><Icon name="sparkle" size={16} /></span><div><span>LOCAL ONLY</span><strong>この土地だけの、小さな出会い。</strong></div><span className="discovery-prefecture">{spot.prefecture}</span></div>
-                        <div className="local-discoveries">
-                          <div><span className="local-icon food-icon">味</span><span><small>ここで食べたい</small><strong>{spot.local_food}</strong></span></div>
-                          <span className="discovery-divider" />
-                          <div><span className="local-icon nature-icon">森</span><span><small>ここで会いたい</small><strong>{spot.local_species}</strong></span></div>
+                      <details className="spot-discovery-details">
+                        <summary>地域の食・自然・豆知識 <Icon name="arrow" size={14} /></summary>
+                        <div className="discovery-panel">
+                          <div className="local-discoveries">
+                            <div><span><small>味わう</small><strong>{spot.local_food}</strong></span></div>
+                            <div><span><small>出会う</small><strong>{spot.local_species}</strong></span></div>
+                          </div>
+                          <div className="tag-row">{spot.tags.map((tag) => <span key={tag}># {tag}</span>)}</div>
+                          <DataStatusBadge status={spot.data_status} />
+                          <SourceAttributions sources={spot.sources} />
+                          <WikipediaSpotSummary spot={spot} />
+                          <button className={visitedIds.includes(spot.id) ? "visited-toggle is-visited feed-visited-toggle" : "visited-toggle feed-visited-toggle"} onClick={() => toggleVisitedSpot(spot)} type="button" aria-pressed={visitedIds.includes(spot.id)}>{visitedIds.includes(spot.id) ? "行った場所に記録済み ✓" : "ここに行ったことがある"}</button>
                         </div>
-                        <div className="tag-row">{spot.tags.map((tag) => <span key={tag}># {tag}</span>)}</div>
-                        <button className={visitedIds.includes(spot.id) ? "visited-toggle is-visited feed-visited-toggle" : "visited-toggle feed-visited-toggle"} onClick={() => toggleVisitedSpot(spot)} type="button" aria-pressed={visitedIds.includes(spot.id)}>{visitedIds.includes(spot.id) ? "行った場所に記録済み ✓" : "ここに行ったことがある"}</button>
-                      </div>
+                      </details>
                     </article>
                   );
                 })}
@@ -484,10 +497,16 @@ function App() {
           </div>
         ) : activeView === "map" ? (
           <section className="map-page" aria-label="マイマップ">
-            <div className="map-page-intro"><div><p className="eyebrow"><Icon name="map" size={14} /> YOUR SAVED PLACES</p><h1>「いつか行きたい」を、<br /><em>地図の上に。</em></h1><p className="intro-description">フィードで出会った景色は、ここにそっと残ります。</p></div><span className="map-total">{String(savedSpots.length).padStart(2, "0")}<small>PLACES TO WANDER</small></span></div>
+            <div className="map-page-intro"><div><p className="eyebrow"><Icon name="map" size={14} /> マイマップ</p><h1>行きたい景色を、<br /><em>地図に。</em></h1></div><span className="map-total">{String(savedSpots.length).padStart(2, "0")}<small>スポット</small></span></div>
+            <div className="map-feature-status"><FeatureStatusBadge mode="connected" label="地図タイル" /><FeatureStatusBadge mode="sample" label="スポット座標" /></div>
             <RegionalRecommendations recommendations={recommendations} onCreateRoute={createRegionalRoute} />
             <div className="map-layout">
-              <RegionalMap spots={savedSpots} selectedRegionId={selectedRegionId} onSelectRegion={setSelectedRegionId} />
+              <RegionalMap
+                spots={savedSpots}
+                selectedRegionId={selectedRegionId}
+                onSelectRegion={setSelectedRegionId}
+                onSelectSpot={(spot) => setSelectedSpotId(spot.id)}
+              />
               <div className="map-detail-column">
                 <div className="map-selection-header">
                   <button
@@ -542,12 +561,41 @@ function App() {
                         </div>
                       );
                     })}</div>
-                    {selectedMapSpot && <article className="map-selected-card"><img src={selectedMapSpot.image_url} alt={`${selectedMapSpot.region}のサンプル写真`} /><div className="map-selected-copy"><span className="eyebrow">SAVED IN YOUR MAP</span>{selectedMapSpot.is_world_heritage && <span className="map-heritage-mark">✦ 世界遺産 · {selectedMapSpot.heritage_name}</span>}<h3>{selectedMapSpot.title}</h3><p>{selectedMapSpot.description}</p><div className="selected-local-info"><span>味わう · {selectedMapSpot.local_food}</span><span>出会う · {selectedMapSpot.local_species}</span></div><div className="map-trivia"><span><Icon name="sparkle" size={13} /> 知ってた？</span><p>{selectedMapSpot.local_trivia}</p></div><button type="button" onClick={() => { setActiveCategory("すべて"); setActiveView("feed"); }}>フィードでもう一度見る <Icon name="arrow" size={14} /></button><button className={visitedIds.includes(selectedMapSpot.id) ? "visited-toggle is-visited" : "visited-toggle"} onClick={() => toggleVisitedSpot(selectedMapSpot)} type="button" aria-pressed={visitedIds.includes(selectedMapSpot.id)}>{visitedIds.includes(selectedMapSpot.id) ? "行った場所に記録済み ✓" : "ここに行ったことがある"}</button></div></article>}
+                    {selectedMapSpot && (
+                      <article className="map-selected-card">
+                        <img src={selectedMapSpot.image_url} alt={`${selectedMapSpot.region}のサンプル風景`} />
+                        <div className="map-selected-copy">
+                          <span className="eyebrow">SAVED IN YOUR MAP</span>
+                          {selectedMapSpot.is_world_heritage && <span className="map-heritage-mark">✦ 世界遺産 · {selectedMapSpot.heritage_name}</span>}
+                          <h3>{selectedMapSpot.title}</h3>
+                          <DataStatusBadge status={selectedMapSpot.data_status} />
+                          <p>{selectedMapSpot.description}</p>
+                          <SourceAttributions sources={selectedMapSpot.sources} />
+                          <details className="map-selected-more">
+                            <summary>食・自然・豆知識</summary>
+                            <div className="selected-local-info">
+                              <span>味わう · {selectedMapSpot.local_food}</span>
+                              <span>出会う · {selectedMapSpot.local_species}</span>
+                            </div>
+                            <div className="map-trivia">
+                              <span><Icon name="sparkle" size={13} /> 知ってた？</span>
+                              <p>{selectedMapSpot.local_trivia}</p>
+                              <WikipediaSpotSummary
+                                spot={selectedMapSpot}
+                                label={selectedMapSpot.is_world_heritage ? "世界遺産の背景を読む" : "豆知識をWikipediaで深掘り"}
+                              />
+                            </div>
+                          </details>
+                          <button className={visitedIds.includes(selectedMapSpot.id) ? "visited-toggle is-visited" : "visited-toggle"} onClick={() => toggleVisitedSpot(selectedMapSpot)} type="button" aria-pressed={visitedIds.includes(selectedMapSpot.id)}>{visitedIds.includes(selectedMapSpot.id) ? "行った場所に記録済み ✓" : "ここに行ったことがある"}</button>
+                        </div>
+                      </article>
+                    )}
                   </>
                 )}
               </div>
             </div>
-            <p className="map-disclaimer">エリアマップは日本の地域区分を使ったサンプル表示です。実際の地図・経路情報には接続していません。</p>
+            <AttributionCredits className="map-attribution" credits={[OPENSTREETMAP_CREDIT]} label="地図データ" />
+            <p className="map-disclaimer">地図タイルはOpenStreetMapの実データです。スポットピンは出典状態を各詳細に表示します。実際のナビゲーションは提供していません。</p>
           </section>
         ) : activeView === "route" ? (
           <RoutePlanner
@@ -581,7 +629,7 @@ function App() {
         ) : (
           <MemoryJournal memories={memories} spots={spots} visitedIds={visitedIds} onToggleVisited={toggleVisitedSpot} />
         )}
-        <footer className="footer"><span>よりみち <b>·</b> 旅心に、寄り道を。</span><span>日本のサンプルスポット · 外部サービス未接続</span></footer>
+        <footer className="footer"><span>よりみち <b>·</b> 旅心に、寄り道を。</span><span>ローカルのサンプル素材 · OSM / OSRM連携</span></footer>
       </main>
       <nav className="mobile-nav" aria-label="メインナビゲーション">
         <button className={activeView === "feed" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setActiveView("feed")} type="button"><Icon name="compass" size={21} /><span>見つける</span></button>

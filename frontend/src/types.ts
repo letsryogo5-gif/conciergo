@@ -17,6 +17,67 @@ export type Spot = {
   local_trivia: string;
   is_world_heritage: boolean;
   heritage_name: string | null;
+  wikipedia_query: string | null;
+  data_status: "sample" | "sourced";
+  sources: SourceReference[];
+};
+
+export type SourceReference = {
+  publisher: string;
+  title: string;
+  url: string;
+  verified_fields: string[];
+  license_name: string | null;
+  license_url: string | null;
+};
+
+export type WikipediaSummary = {
+  title: string;
+  extract: string;
+  article_url: string;
+};
+
+export type MediaAsset = {
+  id: string;
+  media_type: "image" | "video";
+  url: string;
+  preview_url: string;
+  page_url: string;
+  source: "pixabay" | "pexels";
+  description: string;
+  duration_seconds: number | null;
+  creator: string | null;
+};
+
+export type SpotMediaResults = {
+  spot_id: string;
+  query: string;
+  media_type: "image" | "video";
+  source: "providers" | "local_sample";
+  items: MediaAsset[];
+  fallback_url: string;
+  providers: {
+    provider: "pixabay" | "pexels";
+    status: "not_configured" | "available" | "unavailable" | "empty";
+    result_count: number;
+  }[];
+};
+
+export type SpotDiscoveryResults = {
+  items: Spot[];
+  categories: string[];
+  regions: string[];
+  total: number;
+  source: string;
+};
+
+export type GeocodingResult = {
+  place_id: number;
+  display_name: string;
+  latitude: number;
+  longitude: number;
+  category: string;
+  place_type: string;
 };
 
 export type LocalEvent = {
@@ -30,6 +91,8 @@ export type LocalEvent = {
   end_month: number;
   best_time: string;
   category: string;
+  data_status: "sample" | "sourced";
+  sources: SourceReference[];
 };
 
 export type AppStatus = {
@@ -55,6 +118,12 @@ export type RouteDay = {
   start_time: string;
   end_time: string;
   stops: RouteStop[];
+  route_coordinates: RouteCoordinate[];
+};
+
+export type RouteCoordinate = {
+  latitude: number;
+  longitude: number;
 };
 
 export type RoutePlan = {

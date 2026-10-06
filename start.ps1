@@ -72,13 +72,28 @@ try {
         }
     }
 
+    function Test-MediaApiAvailable {
+        try {
+            $response = Invoke-RestMethod -Uri "http://127.0.0.1:8000/openapi.json" -TimeoutSec 2
+            return $response.paths.PSObject.Properties.Name -contains "/api/spots/{spot_id}/media"
+        }
+        catch {
+            return $false
+        }
+    }
+
     $pythonLiteral = $pythonEnvironment.Replace("'", "''")
     $backendLiteral = $backend.Replace("'", "''")
     $npmLiteral = $npmCommand.Source.Replace("'", "''")
     $frontendLiteral = $frontend.Replace("'", "''")
 
     if (Test-LocalEndpoint "http://127.0.0.1:8000/api/health") {
-        Write-Host "API server is already running."
+        if (Test-MediaApiAvailable) {
+            Write-Host "API server with media search is already running."
+        }
+        else {
+            throw "Another or older API server is using port 8000 and does not provide media search. Stop that server with Ctrl+C in its PowerShell window, then run start.bat again."
+        }
     }
     else {
         $apiCommand = "Set-Location -LiteralPath '$backendLiteral'; & '$pythonLiteral' -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600">
+  <defs><linearGradient id="bay" x2="0" y2="1"><stop stop-color="#edc6a6"/><stop offset=".43" stop-color="#91b7b2"/><stop offset="1" stop-color="#286879"/></linearGradient><linearGradient id="water" x2="0" y2="1"><stop stop-color="#548d96"/><stop offset="1" stop-color="#173d53"/></linearGradient></defs>
+  <rect width="1200" height="1600" fill="url(#bay)"/>
+  <circle cx="835" cy="360" r="145" fill="#fff0d0" opacity=".82"/>
+  <path d="M0 789c205-85 321-34 465 30 160 72 295 34 438-17 115-42 196-43 297-4v267H0Z" fill="#4e7774"/>
+  <path d="M0 977c220-42 364 44 535 33 200-14 397-99 665-40v630H0Z" fill="url(#water)"/>
+  <path d="M0 1197c210-35 333 31 505 32 203 2 414-77 695-18v69c-251-54-456 44-677 39-206-5-344-85-523-35Z" fill="#b6d6cc" opacity=".4"/>
+  <g><path d="M145 734h199v365H145Z" fill="#e4d6bd"/><path d="M128 726h234l-19-64H148Z" fill="#7a5141"/><path d="M145 830h199v24H145Zm0 125h199v24H145Z" fill="#a46d52"/><path d="M174 759h44v61h-44zm96 0h42v61h-42zm-96 124h44v60h-44zm96 0h42v60h-42zm-96 125h44v72h-44zm96 0h42v72h-42Z" fill="#394e4a"/></g>
+  <g><path d="M470 817h182v278H470Z" fill="#e3d8bf"/><path d="M455 811h216l-21-57H478Z" fill="#594a3d"/><path d="M470 895h182v22H470Zm0 102h182v22H470Z" fill="#9e6d4d"/><path d="M494 844h43v48h-43zm91 0h42v48h-42zm-91 79h43v48h-43zm91 0h42v48h-42zm-91 98h43v51h-43zm91 0h42v51h-42Z" fill="#314b4b"/></g>
+  <path d="M729 1054q83-44 162 0l-27 42H758Z" fill="#e8d9bc"/><path d="M808 1024v35" stroke="#523f36" stroke-width="8"/>
+</svg>
