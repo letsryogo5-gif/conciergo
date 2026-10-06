@@ -71,39 +71,73 @@ async def recommend_route(request: RouteSuggestionRequest) -> RouteSuggestion:
     try:
         origin = next(item for item in list_origins() if item.name == request.origin)
         candidates = await list_osm_places()
-        selected = choose_places(
-            request.theme,
-            request.stop_count,
-            request.origin,
-            candidates,
-        )
     except (StopIteration, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error) or "出発駅を選び直してください。") from error
 
-    via_points = [
-        f"{origin.latitude},{origin.longitude}",
-        *(
-            f"{place.latitude},{place.longitude}"
-            for place in selected
-        ),
-        f"{origin.latitude},{origin.longitude}",
-    ]
-    legs, total_minutes, departure_time, arrival_time = await search_route(
-        via_points=via_points,
-        departure_date=request.departure_date.isoformat(),
-        departure_time=request.departure_time.strftime("%H:%M"),
+    fallback_reason = ""
+    for stop_count in range(request.stop_count, 0, -1):
+        try:
+            selected = choose_places(
+                request.theme,
+                stop_count,
+                request.origin,
+                candidates,
+            )
+        except HTTPException as error:
+            if error.status_code != 422:
+                raise
+            if stop_count == 1:
+                raise
+            fallback_reason = "テーマに合う候補が指定件数に足りなかったため"
+            continue
+
+        via_points = [
+            f"{origin.latitude},{origin.longitude}",
+            *(f"{place.latitude},{place.longitude}" for place in selected),
+            f"{origin.latitude},{origin.longitude}",
+        ]
+        try:
+            legs, total_minutes, departure_time, arrival_time = await search_route(
+                via_points=via_points,
+                departure_date=request.departure_date.isoformat(),
+                departure_time=request.departure_time.strftime("%H:%M"),
+            )
+        except HTTPException as error:
+            if error.status_code != 404:
+                raise
+            if stop_count == 1:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"{request.theme}テーマの候補地で1か所まで減らして検索しましたが、"
+                        "駅すぱあとAPIで経路が見つかりませんでした。"
+                        "出発日時を変更するか、別のテーマをお試しください。"
+                    ),
+                ) from error
+            fallback_reason = "駅すぱあとAPIで経路が見つからなかったため"
+            continue
+        break
+
+    note = (
+        "スポットの順番は近接性にもとづく候補です。公共交通の経路・時刻は駅すぱあとAPIの検索結果です。"
+        "地点から最寄り駅までのアクセス時間は直線距離からの概算で、実際の徒歩道順ではありません。"
     )
+    if len(selected) < request.stop_count:
+        note += (
+            f" {fallback_reason}、立ち寄り先を"
+            f"{request.stop_count}件から{len(selected)}件に減らして提案しています。"
+        )
+
     return RouteSuggestion(
+        theme=request.theme,
         places=selected,
         origin=origin,
+        requested_stop_count=request.stop_count,
         legs=legs,
         total_minutes=total_minutes,
         departure_time=departure_time or request.departure_time.strftime("%H:%M"),
         arrival_time=arrival_time or None,
-        note=(
-            "スポットの順番は近接性にもとづく候補です。公共交通の経路・時刻は駅すぱあとAPIの検索結果です。"
-            "地点から最寄り駅までのアクセス時間は直線距離からの概算で、実際の徒歩道順ではありません。"
-        ),
+        note=note,
     )
 
 

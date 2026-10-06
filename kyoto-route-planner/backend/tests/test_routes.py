@@ -61,6 +61,22 @@ def sample_places() -> list[Place]:
     ]
 
 
+def theme_places(theme: str) -> list[Place]:
+    return [
+        Place(
+            id=f"{theme}-{index}",
+            name=f"{theme} spot {index}",
+            category="park" if theme == "nature" else "restaurant",
+            description="",
+            access_point="座標から経路検索",
+            latitude=35.01 + index * 0.01,
+            longitude=135.76 + index * 0.015,
+            themes=[theme],
+        )
+        for index in range(3)
+    ]
+
+
 class RoutePlannerTests(unittest.TestCase):
     def test_health_and_origins_remain_available_when_overpass_is_unavailable(self):
         client = TestClient(app)
@@ -281,6 +297,92 @@ class RoutePlannerTests(unittest.TestCase):
             departure_date="2026-10-05",
             departure_time="09:00",
         )
+
+    def test_route_suggestion_returns_only_places_matching_requested_theme(self):
+        client = TestClient(app)
+        candidates = sample_places()
+        search = AsyncMock(return_value=([], 10, "09:00", "09:10"))
+
+        for theme in ("history", "temple", "nature", "food"):
+            request = {
+                "origin": "京都",
+                "theme": theme,
+                "stop_count": 1,
+                "departure_date": "2026-10-07",
+                "departure_time": "09:00",
+            }
+            with (
+                patch("app.main.search_route", search),
+                patch(
+                    "app.main.list_osm_places",
+                    new=AsyncMock(return_value=candidates),
+                ),
+            ):
+                response = client.post("/api/routes", json=request)
+
+            self.assertEqual(response.status_code, 200)
+            body = response.json()
+            self.assertEqual(body["theme"], theme)
+            self.assertEqual(len(body["places"]), 1)
+            self.assertIn(theme, body["places"][0]["themes"])
+
+    def test_route_search_reduces_stop_count_when_provider_has_no_course(self):
+        client = TestClient(app)
+        request = {
+            "origin": "京都",
+            "theme": "nature",
+            "stop_count": 3,
+            "departure_date": "2026-10-07",
+            "departure_time": "09:00",
+        }
+        search = AsyncMock(side_effect=[
+            HTTPException(status_code=404, detail="no course"),
+            HTTPException(status_code=404, detail="no course"),
+            ([], 12, "09:00", "09:12"),
+        ])
+        with (
+            patch("app.main.search_route", search),
+            patch(
+                "app.main.list_osm_places",
+                new=AsyncMock(return_value=theme_places("nature")),
+            ),
+        ):
+            response = client.post("/api/routes", json=request)
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["theme"], "nature")
+        self.assertEqual(body["requested_stop_count"], 3)
+        self.assertEqual(len(body["places"]), 1)
+        self.assertIn("3件から1件に減らして", body["note"])
+        self.assertEqual(search.await_count, 3)
+        self.assertEqual(
+            [len(call.kwargs["via_points"]) - 2 for call in search.await_args_list],
+            [3, 2, 1],
+        )
+
+    def test_route_search_reports_empty_theme_after_all_stop_counts_fail(self):
+        client = TestClient(app)
+        request = {
+            "origin": "京都",
+            "theme": "food",
+            "stop_count": 3,
+            "departure_date": "2026-10-07",
+            "departure_time": "09:00",
+        }
+        search = AsyncMock(side_effect=HTTPException(status_code=404, detail="no course"))
+        with (
+            patch("app.main.search_route", search),
+            patch(
+                "app.main.list_osm_places",
+                new=AsyncMock(return_value=theme_places("food")),
+            ),
+        ):
+            response = client.post("/api/routes", json=request)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("1か所まで減らして", response.json()["detail"])
+        self.assertEqual(search.await_count, 3)
 
 
 if __name__ == "__main__":

@@ -85,6 +85,25 @@ class OverpassTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((places[0].latitude, places[0].longitude), (35.002, 135.768))
         self.assertIn("nature", places[0].themes)
 
+    def test_shrine_historic_tags_are_classified_as_temple_theme(self):
+        places = _parse_places(
+            [
+                osm_element(
+                    osm_id=1,
+                    name="京都の神社",
+                    tags={"religion": "none", "historic": "shrine"},
+                ),
+                osm_element(
+                    osm_id=2,
+                    name="道祖神",
+                    tags={"religion": "none", "historic": "wayside_shrine"},
+                ),
+            ]
+        )
+
+        self.assertEqual(len(places), 2)
+        self.assertTrue(all("temple" in place.themes for place in places))
+
     async def test_natural_language_search_uses_cached_osm_tags(self):
         with tempfile.TemporaryDirectory() as temp_directory:
             database = initialize_database(Path(temp_directory) / "travel.sqlite3")

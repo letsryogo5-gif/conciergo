@@ -72,6 +72,13 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [placeSourceWarning, setPlaceSourceWarning] = useState<string | null>(null);
 
+  function handleThemeChange(nextTheme: Theme) {
+    if (nextTheme === theme) return;
+    setTheme(nextTheme);
+    setSuggestion(null);
+    setError(null);
+  }
+
   useEffect(() => {
     async function loadInitialData() {
       try {
@@ -113,7 +120,9 @@ function App() {
     () => origins.find((item) => item.name === originName) ?? null,
     [originName, origins],
   );
-  const mapPlaces = suggestion?.places ?? places;
+  const mapPlaces = suggestion?.places ?? places.filter(
+    (place) => theme === "all" || place.themes.includes(theme),
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -143,7 +152,20 @@ function App() {
       if (!response.ok) {
         throw new Error(await readError(response));
       }
-      setSuggestion(await response.json() as RouteSuggestion);
+      const result: unknown = await response.json();
+      if (
+        typeof result !== "object"
+        || result === null
+        || !("places" in result)
+        || !Array.isArray(result.places)
+        || result.places.length === 0
+      ) {
+        throw new Error("選択したテーマのルート候補が返されませんでした。立ち寄り件数やテーマを変更してください。");
+      }
+      if (!("theme" in result) || result.theme !== theme) {
+        throw new Error("選択したテーマと異なる検索結果が返されました。もう一度お試しください。");
+      }
+      setSuggestion(result as RouteSuggestion);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "ルートを取得できませんでした。");
     } finally {
@@ -192,7 +214,8 @@ function App() {
                     className={`theme-chip${theme === item.id ? " selected" : ""}`}
                     type="button"
                     key={item.id}
-                    onClick={() => setTheme(item.id)}
+                    disabled={searching}
+                    onClick={() => handleThemeChange(item.id)}
                     aria-pressed={theme === item.id}
                   >
                     <span>{item.icon}</span>{item.label}
@@ -230,7 +253,7 @@ function App() {
             <button className="submit-button" type="submit" disabled={searching || loading}>
               {searching ? <><span className="button-spinner" /> 実際の経路を検索しています</> : <>この条件でルートを提案 <span>↗</span></>}
             </button>
-            <p className="form-footnote">検索ボタンを押した時だけ、駅すぱあとAPIに1回問い合わせます。</p>
+            <p className="form-footnote">検索ボタンを押した時に駅すぱあとAPIへ問い合わせます。経路が見つからない場合は立ち寄り先を減らして、最大3回まで検索します。</p>
           </form>
 
           {error && <div className="error-panel" role="alert"><strong>ルートを表示できません</strong><span>{error}</span></div>}
@@ -251,13 +274,23 @@ function App() {
       <section className="results-section" aria-live="polite">
         <div className="section-heading results-heading">
           <div><p className="eyebrow">ROUTE IDEA</p><h2>{suggestion ? "今日のよりみちルート" : "ルートの提案"}</h2></div>
-          {suggestion && <span className="result-date">{departureDate}</span>}
+          {suggestion && (
+            <span className="result-date">
+              {themes.find((item) => item.id === suggestion.theme)?.label}
+              {suggestion.places.length < suggestion.requested_stop_count
+                && ` · ${suggestion.requested_stop_count}件から${suggestion.places.length}件に調整`}
+              {" · "}{departureDate}
+            </span>
+          )}
         </div>
 
-        {!suggestion && !error && (
+        {!suggestion && (
           <div className="empty-state">
-            <span className="empty-icon">↗</span>
-            <div><strong>行き先の候補と実際の経路をご提案します</strong><p>出発駅とテーマを選んで、ルートを検索してください。</p></div>
+            <span className="empty-icon">{error ? "!" : "↗"}</span>
+            <div>
+              <strong>{error ? "ルート候補を表示できませんでした" : "行き先の候補と実際の経路をご提案します"}</strong>
+              <p>{error ?? "出発駅とテーマを選んで、ルートを検索してください。"}</p>
+            </div>
           </div>
         )}
 

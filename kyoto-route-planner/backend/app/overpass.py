@@ -90,8 +90,14 @@ def _parse_places(elements: Any) -> list[Place]:
         leisure = str(tags.get("leisure", "")).casefold()
         shop = str(tags.get("shop", "")).casefold()
         if (
-            historic in {"temple", "monastery", "church"}
-            or tags.get("amenity") == "place_of_worship"
+            historic in {
+                "temple",
+                "monastery",
+                "church",
+                "shrine",
+                "wayside_shrine",
+            }
+            or amenity == "place_of_worship"
         ):
             themes.add("temple")
         if religion in {"buddhist", "shinto"}:

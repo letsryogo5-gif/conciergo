@@ -43,8 +43,10 @@ class RouteLeg(BaseModel):
 
 
 class RouteSuggestion(BaseModel):
-    places: list[Place]
+    theme: Theme
+    places: list[Place] = Field(min_length=1)
     origin: Origin
+    requested_stop_count: int = Field(ge=1, le=3)
     legs: list[RouteLeg]
     total_minutes: int | None = None
     departure_time: str | None = None

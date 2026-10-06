@@ -26,8 +26,10 @@ export type RouteLeg = {
 };
 
 export type RouteSuggestion = {
+  theme: Theme;
   places: Place[];
   origin: Origin;
+  requested_stop_count: number;
   legs: RouteLeg[];
   total_minutes: number | null;
   departure_time: string | null;
