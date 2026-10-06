@@ -24,6 +24,7 @@ API_URL = "https://overpass-api.de/api/interpreter"
 CACHE_KEY = "kyoto-overpass-v1"
 CACHE_TTL = timedelta(hours=24)
 RATE_LIMIT_PAUSE = timedelta(hours=1)
+OUTAGE_PAUSE = timedelta(minutes=15)
 QUERY_CENTER = (34.98585, 135.75877)
 QUERY_BUFFER_METERS = 2_000
 _request_lock = asyncio.Lock()
@@ -218,15 +219,21 @@ def get_osm_status(path: Path | None = None) -> dict[str, Any]:
     fetched_at = datetime.fromisoformat(entry["fetched_at"])
     cached_until = fetched_at + CACHE_TTL
     paused = _rate_limit_pause(entry)
-    warning = (
-        "Overpass APIからリクエスト制限が返されたため、追加検索を一時停止しています。"
-        if paused
-        else None
-    )
+    cached_places = _parse_places(json.loads(entry["payload_json"]))
+    is_stale = _now() >= cached_until
+    warning = None
+    if paused and is_stale and cached_places:
+        warning = (
+            "Overpass APIが利用できないため、取得から24時間以上経過した"
+            f"キャッシュを代わりに表示しています（取得日時: {fetched_at.astimezone().strftime('%Y-%m-%d %H:%M')}）。"
+        )
+    elif paused:
+        warning = "Overpass APIが利用できないため、追加検索を一時停止しています。"
     return {
         "cached_until": cached_until.isoformat(),
         "warning": warning,
         "requests_paused": paused,
+        "using_stale_cache": bool(paused and is_stale and cached_places),
     }
 
 
@@ -255,6 +262,8 @@ async def _load_osm_places(path: Path | None = None) -> list[Place]:
         if cache_is_fresh and places:
             return places
         if _rate_limit_pause(entry):
+            if places:
+                return places
             raise HTTPException(
                 status_code=429,
                 detail=get_osm_status(target)["warning"]
@@ -274,48 +283,42 @@ async def _load_osm_places(path: Path | None = None) -> list[Place]:
                 },
             )
     except httpx.TimeoutException as error:
+        stale_places = _record_provider_failure(
+            target,
+            entry,
+            now,
+            now + OUTAGE_PAUSE,
+        )
+        if stale_places:
+            return stale_places
         raise HTTPException(
             status_code=504,
             detail="Overpass APIの検索がタイムアウトしました。時間をおいて再度お試しください。",
         ) from error
     except httpx.RequestError as error:
+        stale_places = _record_provider_failure(
+            target,
+            entry,
+            now,
+            now + OUTAGE_PAUSE,
+        )
+        if stale_places:
+            return stale_places
         raise HTTPException(
             status_code=502,
             detail="Overpass APIに接続できませんでした。",
         ) from error
 
     if response.status_code == 429:
-        cached_payload = (
-            entry["payload_json"] if entry is not None else "[]"
+        stale_places = _record_provider_failure(
+            target,
+            entry,
+            now,
+            _retry_after(response.headers)
+            or (now + RATE_LIMIT_PAUSE).isoformat(),
         )
-        quota_fetched_at = (
-            entry["fetched_at"]
-            if entry is not None
-            else (now - CACHE_TTL).isoformat()
-        )
-        with closing(sqlite3.connect(target)) as connection:
-            connection.execute(
-                """
-                INSERT INTO osm_places_cache (
-                    cache_key, fetched_at, payload_json,
-                    rate_limited, retry_after
-                ) VALUES (?, ?, ?, 1, ?)
-                ON CONFLICT(cache_key) DO UPDATE SET
-                    fetched_at = excluded.fetched_at,
-                    rate_limited = 1,
-                    retry_after = excluded.retry_after
-                """,
-                (
-                    CACHE_KEY,
-                    quota_fetched_at,
-                    cached_payload,
-                    (
-                        _retry_after(response.headers)
-                        or (now + RATE_LIMIT_PAUSE).isoformat()
-                    ),
-                ),
-            )
-            connection.commit()
+        if stale_places:
+            return stale_places
         raise HTTPException(
             status_code=429,
             detail=(
@@ -325,6 +328,14 @@ async def _load_osm_places(path: Path | None = None) -> list[Place]:
         )
     if response.status_code >= 400:
         if response.status_code in (502, 503, 504):
+            stale_places = _record_provider_failure(
+                target,
+                entry,
+                now,
+                now + OUTAGE_PAUSE,
+            )
+            if stale_places:
+                return stale_places
             raise HTTPException(
                 status_code=503,
                 detail="Overpass APIが一時的に利用できません。時間をおいて再試行してください。",
@@ -374,6 +385,37 @@ async def _load_osm_places(path: Path | None = None) -> list[Place]:
         )
         connection.commit()
     return places
+
+
+def _record_provider_failure(
+    target: Path,
+    entry: sqlite3.Row | None,
+    now: datetime,
+    retry_after: datetime | str,
+) -> list[Place]:
+    cached_payload = entry["payload_json"] if entry is not None else "[]"
+    cached_fetched_at = (
+        entry["fetched_at"]
+        if entry is not None
+        else (now - CACHE_TTL).isoformat()
+    )
+    retry_after_value = (
+        retry_after.isoformat() if isinstance(retry_after, datetime) else retry_after
+    )
+    with closing(sqlite3.connect(target)) as connection:
+        connection.execute(
+            """
+            INSERT INTO osm_places_cache (
+                cache_key, fetched_at, payload_json, rate_limited, retry_after
+            ) VALUES (?, ?, ?, 1, ?)
+            ON CONFLICT(cache_key) DO UPDATE SET
+                rate_limited = 1,
+                retry_after = excluded.retry_after
+            """,
+            (CACHE_KEY, cached_fetched_at, cached_payload, retry_after_value),
+        )
+        connection.commit()
+    return _parse_places(json.loads(cached_payload))
 
 
 async def list_osm_places(path: Path | None = None) -> list[Place]:

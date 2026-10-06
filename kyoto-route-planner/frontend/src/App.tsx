@@ -187,6 +187,7 @@ function App() {
                 <select value={originName} onChange={(event) => setOriginName(event.target.value)} disabled={loading}>
                   {origins.map((item) => <option value={item.name} key={item.name}>{item.name}駅</option>)}
                 </select>
+                <small>スポット候補は京都駅周辺2kmから取得します。</small>
               </label>
               <label>
                 <span>出発日</span>

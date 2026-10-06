@@ -156,6 +156,43 @@ class OverpassTests(unittest.IsolatedAsyncioTestCase):
             client.post.assert_awaited_once()
             self.assertTrue(get_osm_status(database)["requests_paused"])
 
+    async def test_stale_cache_is_used_and_warned_when_provider_is_unavailable(self):
+        with tempfile.TemporaryDirectory() as temp_directory:
+            database = initialize_database(Path(temp_directory) / "travel.sqlite3")
+            fetched_at = datetime.now(timezone.utc) - timedelta(days=2)
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute(
+                    """
+                    INSERT INTO osm_places_cache (
+                        cache_key, fetched_at, payload_json, rate_limited, retry_after
+                    ) VALUES (?, ?, ?, 0, NULL)
+                    """,
+                    (
+                        CACHE_KEY,
+                        fetched_at.isoformat(),
+                        json.dumps([osm_element()]),
+                    ),
+                )
+                connection.commit()
+
+            response = httpx.Response(503)
+            with (
+                patch("app.overpass.database_path", return_value=database),
+                patch("app.overpass.httpx.AsyncClient") as client_factory,
+            ):
+                client = client_factory.return_value.__aenter__.return_value
+                client.post = AsyncMock(return_value=response)
+                places = await list_osm_places()
+                warning = get_osm_status(database)
+                cached_again = await list_osm_places()
+
+            self.assertEqual([place.name for place in places], ["京都の神社"])
+            self.assertEqual(cached_again, places)
+            self.assertTrue(warning["using_stale_cache"])
+            self.assertIn("24時間以上経過したキャッシュ", warning["warning"])
+            self.assertTrue(warning["requests_paused"])
+            client.post.assert_awaited_once()
+
     async def test_provider_outage_is_reported_explicitly(self):
         with tempfile.TemporaryDirectory() as temp_directory:
             database = initialize_database(Path(temp_directory) / "travel.sqlite3")

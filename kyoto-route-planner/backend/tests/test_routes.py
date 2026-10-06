@@ -57,7 +57,10 @@ class RoutePlannerTests(unittest.TestCase):
         client = TestClient(app)
 
         self.assertEqual(client.get("/api/health").json(), {"status": "ok"})
-        self.assertGreater(len(client.get("/api/origins").json()), 0)
+        self.assertEqual(
+            [origin["name"] for origin in client.get("/api/origins").json()],
+            ["京都"],
+        )
         with patch("app.main.list_osm_places", side_effect=HTTPException(503, "Overpass unavailable")):
             self.assertEqual(client.get("/api/places").status_code, 503)
         self.assertFalse(client.get("/api/places/status").json()["requests_paused"])
@@ -139,6 +142,28 @@ class RoutePlannerTests(unittest.TestCase):
         self.assertEqual(legs[0].to_name, "稲荷")
         self.assertEqual(legs[0].line_name, "JR奈良線")
         self.assertEqual(total_minutes, 35)
+
+    def test_zero_route_total_falls_back_to_positive_segment_durations(self):
+        course = {
+            "Route": {
+                "timeOnBoard": "0",
+                "timeOther": "0",
+                "Point": [
+                    {"Station": {"Name": "京都"}},
+                    {"Station": {"Name": "稲荷"}},
+                    {"Station": {"Name": "京都"}},
+                ],
+                "Line": [
+                    {"Name": "移動", "Type": "other", "timeOnBoard": "1"},
+                    {"Name": "移動", "Type": "other", "timeOnBoard": "1"},
+                ],
+            }
+        }
+
+        legs, total_minutes = _parse_legs(course)
+
+        self.assertEqual(len(legs), 2)
+        self.assertEqual(total_minutes, 2)
 
     def test_route_search_reports_missing_api_key(self):
         client = TestClient(app)

@@ -80,6 +80,14 @@ def _parse_legs(course: dict) -> tuple[list[RouteLeg], int | None]:
     total_minutes = _integer(route.get("timeOnBoard"))
     if total_minutes is not None:
         total_minutes += _integer(route.get("timeOther")) or 0
+    if total_minutes == 0:
+        leg_minutes = [
+            leg.duration_minutes
+            for leg in legs
+            if leg.duration_minutes is not None and leg.duration_minutes > 0
+        ]
+        if leg_minutes:
+            total_minutes = sum(leg_minutes)
     return legs, total_minutes
 
 

@@ -7,9 +7,6 @@ from app.models import Origin, Place, Theme
 
 ORIGINS = [
     Origin(name="京都", latitude=34.98585, longitude=135.75877),
-    Origin(name="四条", latitude=35.00375, longitude=135.76812),
-    Origin(name="三条", latitude=35.00935, longitude=135.77154),
-    Origin(name="嵯峨嵐山", latitude=35.01894, longitude=135.68108),
 ]
 
 
