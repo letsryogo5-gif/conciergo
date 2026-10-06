@@ -26,6 +26,10 @@ def _distance_km(first: tuple[float, float], second: tuple[float, float]) -> flo
     return 6371.0 * 2 * asin(sqrt(haversine))
 
 
+MIN_ORIGIN_DISTANCE_KM = 0.3
+MIN_STOP_SEPARATION_KM = 0.5
+
+
 def choose_places(
     theme: Theme,
     stop_count: int,
@@ -41,14 +45,42 @@ def choose_places(
         for place in candidates
         if place.themes and (theme == "all" or theme in place.themes)
     ]
+    if theme == "all":
+        sightseeing = [
+            place
+            for place in remaining
+            if set(place.themes) & {"history", "temple", "nature"}
+        ]
+        if len(sightseeing) >= stop_count:
+            remaining = sightseeing
     if not remaining:
         raise ValueError("OpenStreetMapの取得データに選択したテーマの候補がありません。")
 
     selected: list[Place] = []
     current = (origin.latitude, origin.longitude)
-    while remaining and len(selected) < stop_count:
+    while len(selected) < stop_count:
+        eligible = [
+            place
+            for place in remaining
+            if (
+                selected
+                or _distance_km(
+                    (origin.latitude, origin.longitude),
+                    (place.latitude, place.longitude),
+                ) >= MIN_ORIGIN_DISTANCE_KM
+            )
+            and all(
+                _distance_km(
+                    (selected_place.latitude, selected_place.longitude),
+                    (place.latitude, place.longitude),
+                ) >= MIN_STOP_SEPARATION_KM
+                for selected_place in selected
+            )
+        ]
+        if not eligible:
+            break
         closest = min(
-            remaining,
+            eligible,
             key=lambda place: _distance_km(
                 current,
                 (place.latitude, place.longitude),
@@ -63,6 +95,7 @@ def choose_places(
             status_code=422,
             detail=(
                 f"OpenStreetMapの取得データから立ち寄り先が{len(selected)}件しか見つかりませんでした。"
+                "出発駅や他の立ち寄り先に近すぎる地点は除外しています。"
                 "立ち寄り件数またはテーマを変更してください。"
             ),
         )

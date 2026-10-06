@@ -169,7 +169,10 @@ async def search_route(
     if not courses:
         raise HTTPException(
             status_code=404,
-            detail="指定した出発駅と候補地を結ぶ経路が見つかりませんでした。",
+            detail=(
+                "指定した日時・立ち寄り先の経路が見つかりませんでした。"
+                "出発日時が過去でないか確認し、出発時刻を変更するか立ち寄り先を減らしてください。"
+            ),
         )
 
     course = courses[0]

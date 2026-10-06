@@ -11,10 +11,24 @@ const themes: { id: Theme; label: string; icon: string }[] = [
   { id: "food", label: "食・商店街", icon: "◉" },
 ];
 
-function localDateInputValue() {
+function defaultDeparture() {
   const now = new Date();
-  const offset = now.getTimezoneOffset();
-  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
+  const departure = new Date(now);
+  departure.setHours(9, 0, 0, 0);
+  if (departure <= now) {
+    departure.setDate(departure.getDate() + 1);
+  }
+  const offset = departure.getTimezoneOffset();
+  const localDeparture = new Date(departure.getTime() - offset * 60_000);
+  return {
+    date: localDeparture.toISOString().slice(0, 10),
+    time: "09:00",
+  };
+}
+
+function localDateInputValue(date = new Date()) {
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 10);
 }
 
 function formatDuration(minutes: number | null) {
@@ -49,8 +63,9 @@ function App() {
   const [originName, setOriginName] = useState("京都");
   const [theme, setTheme] = useState<Theme>("all");
   const [stopCount, setStopCount] = useState(3);
-  const [departureDate, setDepartureDate] = useState(localDateInputValue);
-  const [departureTime, setDepartureTime] = useState("09:00");
+  const [departure, setDeparture] = useState(defaultDeparture);
+  const departureDate = departure.date;
+  const departureTime = departure.time;
   const [suggestion, setSuggestion] = useState<RouteSuggestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -102,6 +117,11 @@ function App() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (new Date(`${departureDate}T${departureTime}`) <= new Date()) {
+      setError("出発日時は現在より後の日時を選択してください。");
+      setSuggestion(null);
+      return;
+    }
     setError(null);
     setSuggestion(null);
     setSearching(true);
@@ -191,11 +211,11 @@ function App() {
               </label>
               <label>
                 <span>出発日</span>
-                <input type="date" value={departureDate} onChange={(event) => setDepartureDate(event.target.value)} required />
+                <input type="date" min={localDateInputValue()} value={departureDate} onChange={(event) => setDeparture((current) => ({ ...current, date: event.target.value }))} required />
               </label>
               <label>
                 <span>出発時刻</span>
-                <input type="time" value={departureTime} onChange={(event) => setDepartureTime(event.target.value)} required />
+                <input type="time" value={departureTime} onChange={(event) => setDeparture((current) => ({ ...current, time: event.target.value }))} required />
               </label>
               <label>
                 <span>立ち寄り先</span>

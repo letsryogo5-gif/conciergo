@@ -1,10 +1,13 @@
 import unittest
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
-from app.ekispert import _make_url, _parse_legs
+import httpx
+
+from app.ekispert import _make_url, _parse_legs, search_route
 from app.main import app
 from app.models import (
     CatalogPlace,
@@ -14,7 +17,13 @@ from app.models import (
     PlaceSearchResponse,
     RouteLeg,
 )
-from app.places import choose_places
+from app.places import (
+    MIN_ORIGIN_DISTANCE_KM,
+    MIN_STOP_SEPARATION_KM,
+    _distance_km,
+    choose_places,
+    list_origins,
+)
 
 
 def sample_places() -> list[Place]:
@@ -103,6 +112,28 @@ class RoutePlannerTests(unittest.TestCase):
         self.assertEqual(len(places), 1)
         self.assertTrue(all("nature" in place.themes for place in places))
 
+    def test_all_theme_chooses_sights_separated_from_origin_and_each_other(self):
+        origin = list_origins()[0]
+        selected = choose_places("all", 3, origin.name, sample_places())
+
+        self.assertEqual(len(selected), 3)
+        for place in selected:
+            self.assertGreaterEqual(
+                _distance_km(
+                    (origin.latitude, origin.longitude),
+                    (place.latitude, place.longitude),
+                ),
+                MIN_ORIGIN_DISTANCE_KM,
+            )
+        for first, second in zip(selected, selected[1:]):
+            self.assertGreaterEqual(
+                _distance_km(
+                    (first.latitude, first.longitude),
+                    (second.latitude, second.longitude),
+                ),
+                MIN_STOP_SEPARATION_KM,
+            )
+
     def test_unknown_origin_is_rejected(self):
         with self.assertRaises(ValueError):
             choose_places("all", 2, "知らない駅", sample_places())
@@ -183,6 +214,29 @@ class RoutePlannerTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 503)
         self.assertIn("EKISPERT_API_KEY", response.json()["detail"])
+
+    def test_route_not_found_suggests_changing_departure_time_or_stop_count(self):
+        response = httpx.Response(200, json={"ResultSet": {"Course": []}})
+        with (
+            patch.dict("os.environ", {"EKISPERT_API_KEY": "test-key"}),
+            patch("app.ekispert.load_dotenv"),
+            patch("app.ekispert.httpx.AsyncClient") as client_factory,
+        ):
+            client_factory.return_value.__aenter__.return_value.get = AsyncMock(
+                return_value=response
+            )
+            with self.assertRaises(HTTPException) as raised:
+                asyncio.run(
+                    search_route(
+                        via_points=["京都", "稲荷", "京都"],
+                        departure_date="2026-10-07",
+                        departure_time="09:00",
+                    )
+                )
+
+        self.assertEqual(raised.exception.status_code, 404)
+        self.assertIn("出発日時が過去でないか", raised.exception.detail)
+        self.assertIn("立ち寄り先を減らしてください", raised.exception.detail)
 
     def test_route_suggestion_uses_one_real_route_search(self):
         client = TestClient(app)
